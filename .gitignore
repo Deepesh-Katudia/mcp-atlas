@@ -1,0 +1,10 @@
+node_modules
+dist
+coverage
+.vite
+.DS_Store
+*.log
+.env
+*.tsbuildinfo
+tmp-blaxel-*.html
+logs/

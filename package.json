@@ -1,0 +1,24 @@
+{
+  "name": "mcp-atlas",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/server",
+    "apps/web",
+    "services/search-mcp",
+    "services/memory-mcp",
+    "services/file-mcp"
+  ],
+  "scripts": {
+    "dev": "npm-run-all --parallel dev:search dev:memory dev:file dev:server dev:web",
+    "dev:search": "npm run dev -w @mcp-atlas/search-mcp",
+    "dev:memory": "npm run dev -w @mcp-atlas/memory-mcp",
+    "dev:file": "npm run dev -w @mcp-atlas/file-mcp",
+    "dev:server": "npm run dev -w @mcp-atlas/server",
+    "dev:web": "npm run dev -w @mcp-atlas/web",
+    "build": "npm run build -w @mcp-atlas/search-mcp && npm run build -w @mcp-atlas/memory-mcp && npm run build -w @mcp-atlas/file-mcp && npm run build -w @mcp-atlas/server && npm run build -w @mcp-atlas/web"
+  },
+  "devDependencies": {
+    "npm-run-all": "^4.1.5"
+  }
+}
