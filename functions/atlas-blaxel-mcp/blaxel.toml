@@ -1,0 +1,14 @@
+name = "mcp-atlas-tools"
+workspace = "dk09"
+type = "function"
+
+[env]
+MCP_PORT = "3000"
+
+[[triggers]]
+id = "mcp-atlas-tools"
+type = "http"
+
+[triggers.configuration]
+path = "functions/mcp-atlas-tools"
+authenticationType = "public"
