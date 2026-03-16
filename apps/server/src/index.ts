@@ -10,7 +10,7 @@ import { BlaxelFunctionsService } from "./blaxel-functions.js";
 import { BlaxelMcpService } from "./blaxel-mcp.js";
 import { atlasServices, serviceBySlug } from "./services.js";
 import { TelemetryStore } from "./store.js";
-import type { McpName, TelemetryEvent } from "./types.js";
+import type { DashboardSnapshot, McpName, McpToolInfo, McpToolset, TelemetryEvent } from "./types.js";
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(currentDir, "../../../.env") });
@@ -29,6 +29,23 @@ const blaxel = new BlaxelSandboxService();
 const blaxelFunctions = new BlaxelFunctionsService();
 const blaxelMcp = new BlaxelMcpService();
 let sequence = 0;
+const toolInvocations: Array<{
+  server: McpName;
+  toolId: string;
+  timestamp: number;
+  latencyMs: number;
+  status: "ok" | "error";
+}> = [];
+let cachedBlaxelTools: McpToolInfo[] = [
+  {
+    id: "processesList",
+    name: "processesList",
+    description: "List running processes in the connected Blaxel sandbox.",
+    requestCount: 0,
+    averageLatencyMs: 0,
+  },
+];
+let lastBlaxelToolRefreshAt = 0;
 
 function nextId(prefix: string) {
   sequence += 1;
@@ -38,6 +55,108 @@ function nextId(prefix: string) {
 function emit(event: TelemetryEvent) {
   store.ingest(event);
   io.emit("telemetry:event", event);
+}
+
+function recordToolInvocation(entry: {
+  server: McpName;
+  toolId: string;
+  latencyMs: number;
+  status: "ok" | "error";
+}) {
+  toolInvocations.push({
+    ...entry,
+    timestamp: Date.now(),
+  });
+
+  if (toolInvocations.length > 2000) {
+    toolInvocations.splice(0, toolInvocations.length - 2000);
+  }
+}
+
+function buildToolMetrics(now = Date.now()) {
+  const recent = toolInvocations.filter((entry) => now - entry.timestamp <= 60_000);
+  const aggregates = new Map<string, { count: number; totalLatencyMs: number }>();
+
+  for (const entry of recent) {
+    const key = `${entry.server}::${entry.toolId}`;
+    const aggregate = aggregates.get(key) ?? { count: 0, totalLatencyMs: 0 };
+    aggregate.count += 1;
+    aggregate.totalLatencyMs += entry.latencyMs;
+    aggregates.set(key, aggregate);
+  }
+
+  return aggregates;
+}
+
+function buildToolsets(now = Date.now()): McpToolset[] {
+  const metrics = buildToolMetrics(now);
+  const withMetrics = (server: McpName, tool: Omit<McpToolInfo, "requestCount" | "averageLatencyMs">): McpToolInfo => {
+    const metric = metrics.get(`${server}::${tool.id}`);
+    return {
+      ...tool,
+      requestCount: metric?.count ?? 0,
+      averageLatencyMs: metric?.count ? Math.round(metric.totalLatencyMs / metric.count) : 0,
+    };
+  };
+
+  return [
+    {
+      server: "Gateway MCP",
+      tools: [
+        withMetrics("Gateway MCP", {
+          id: "agent-task",
+          name: "agentTask",
+          description: "Run the local multi-hop Atlas workflow.",
+        }),
+      ],
+    },
+    ...atlasServices.map((service) => ({
+      server: service.name,
+      tools: service.tools.map((tool) => withMetrics(service.name, {
+        id: tool.id,
+        name: tool.name,
+        description: tool.description,
+      })),
+    })),
+    {
+      server: "Atlas Blaxel MCP",
+      tools: cachedBlaxelTools.map((tool) => withMetrics("Atlas Blaxel MCP", tool)),
+    },
+  ];
+}
+
+function buildDashboardSnapshot(): DashboardSnapshot {
+  return {
+    ...store.snapshot(),
+    toolsets: buildToolsets(),
+  };
+}
+
+async function refreshBlaxelTools(force = false) {
+  const now = Date.now();
+  if (!force && now - lastBlaxelToolRefreshAt < 60_000) {
+    return;
+  }
+
+  try {
+    const result = await blaxelMcp.listTools();
+    const discovered = result.tools
+      .slice(0, 4)
+      .map((tool) => ({
+        id: tool.name,
+        name: tool.name,
+        description: tool.description ?? null,
+        requestCount: 0,
+        averageLatencyMs: 0,
+      }));
+
+    if (discovered.length > 0) {
+      cachedBlaxelTools = discovered;
+      lastBlaxelToolRefreshAt = now;
+    }
+  } catch {
+    // Keep last known tool catalog if discovery fails.
+  }
 }
 
 function emitHeartbeat(sourceMcp: McpName) {
@@ -115,6 +234,13 @@ async function callService({
       throw new Error(typeof data === "object" && data && "error" in data ? String((data as { error: string }).error) : `HTTP ${response.status}`);
     }
 
+    recordToolInvocation({
+      server: targetMcp,
+      toolId: targetService.tools[0]?.id ?? targetService.slug,
+      latencyMs,
+      status: "ok",
+    });
+
     emit({
       eventId: nextId("evt"),
       traceId,
@@ -131,6 +257,12 @@ async function callService({
     return data;
   } catch (error) {
     const latencyMs = Date.now() - start;
+    recordToolInvocation({
+      server: targetMcp,
+      toolId: targetService.tools[0]?.id ?? targetService.slug,
+      latencyMs,
+      status: "error",
+    });
     emit({
       eventId: nextId("evt"),
       traceId,
@@ -182,6 +314,12 @@ async function callBlaxelFunctionTool({
   try {
     const result = await blaxelMcp.callToolAt(target.url, toolName, payload);
     const latencyMs = Date.now() - start;
+    recordToolInvocation({
+      server: "Atlas Blaxel MCP",
+      toolId: toolName,
+      latencyMs,
+      status: "ok",
+    });
 
     emit({
       eventId: nextId("evt"),
@@ -212,6 +350,12 @@ async function callBlaxelFunctionTool({
     return { function: target, result };
   } catch (error) {
     const latencyMs = Date.now() - start;
+    recordToolInvocation({
+      server: "Atlas Blaxel MCP",
+      toolId: toolName,
+      latencyMs,
+      status: "error",
+    });
     emit({
       eventId: nextId("evt"),
       traceId,
@@ -256,6 +400,12 @@ async function callBlaxelSandboxTool({
   try {
     const result = await blaxelMcp.callTool(toolName, payload);
     const latencyMs = Date.now() - start;
+    recordToolInvocation({
+      server: "Atlas Blaxel MCP",
+      toolId: toolName,
+      latencyMs,
+      status: "ok",
+    });
 
     emit({
       eventId: nextId("evt"),
@@ -286,6 +436,12 @@ async function callBlaxelSandboxTool({
     return result;
   } catch (error) {
     const latencyMs = Date.now() - start;
+    recordToolInvocation({
+      server: "Atlas Blaxel MCP",
+      toolId: toolName,
+      latencyMs,
+      status: "error",
+    });
     emit({
       eventId: nextId("evt"),
       traceId,
@@ -319,6 +475,7 @@ async function heartbeatServices() {
 
   try {
     await blaxelMcp.ping();
+    await refreshBlaxelTools();
     emitHeartbeat("Atlas Blaxel MCP");
   } catch {
     // Let the sandbox MCP age into offline if unreachable.
@@ -333,7 +490,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.get("/api/snapshot", (_req, res) => {
-  res.json(store.snapshot());
+  res.json(buildDashboardSnapshot());
 });
 
 app.get("/api/integrations/blaxel", (_req, res) => {
@@ -523,6 +680,7 @@ app.post("/api/demo/agent-task", async (req, res) => {
   const requestId = nextId("req");
   const query = String(req.body?.query ?? "alignment observability");
   const forceFileFailure = Boolean(req.body?.forceFileFailure);
+  const startedAt = Date.now();
 
   try {
     const search = await callService({
@@ -547,6 +705,13 @@ app.post("/api/demo/agent-task", async (req, res) => {
       payload: { filename: "atlas-notes.txt", forceFailure: forceFileFailure },
     });
 
+    recordToolInvocation({
+      server: "Gateway MCP",
+      toolId: "agent-task",
+      latencyMs: Date.now() - startedAt,
+      status: "ok",
+    });
+
     res.json({
       traceId,
       requestId,
@@ -557,6 +722,12 @@ app.post("/api/demo/agent-task", async (req, res) => {
       },
     });
   } catch (error) {
+    recordToolInvocation({
+      server: "Gateway MCP",
+      toolId: "agent-task",
+      latencyMs: Date.now() - startedAt,
+      status: "error",
+    });
     res.status(502).json({
       traceId,
       requestId,
@@ -566,14 +737,15 @@ app.post("/api/demo/agent-task", async (req, res) => {
 });
 
 io.on("connection", (socket) => {
-  socket.emit("dashboard:snapshot", store.snapshot());
+  socket.emit("dashboard:snapshot", buildDashboardSnapshot());
 });
 
 setInterval(() => {
-  io.emit("dashboard:snapshot", store.snapshot());
+  io.emit("dashboard:snapshot", buildDashboardSnapshot());
 }, 2_000);
 
 await blaxel.initialize();
+await refreshBlaxelTools(true);
 await heartbeatServices();
 setInterval(() => {
   void heartbeatServices();
