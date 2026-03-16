@@ -39,6 +39,19 @@ export interface DependencyEdge {
   averageLatencyMs: number;
 }
 
+export interface McpToolInfo {
+  id: string;
+  name: string;
+  description: string | null;
+  requestCount: number;
+  averageLatencyMs: number;
+}
+
+export interface McpToolset {
+  server: string;
+  tools: McpToolInfo[];
+}
+
 export interface Alert {
   id: string;
   severity: "high" | "medium" | "low";
@@ -69,6 +82,7 @@ export interface DashboardSnapshot {
   generatedAt: number;
   overview: OverviewStats;
   servers: ServerStats[];
+  toolsets: McpToolset[];
   traces: TraceSummary[];
   dependencies: DependencyEdge[];
   alerts: Alert[];
