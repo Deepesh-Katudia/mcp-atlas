@@ -106,6 +106,7 @@ export class TelemetryStore {
         anomalyCount: alerts.length,
       },
       servers,
+      toolsets: [],
       traces,
       dependencies,
       alerts,
