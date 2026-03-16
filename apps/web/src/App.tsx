@@ -26,18 +26,21 @@ const clusterMap: Record<string, string> = {
   "Search MCP": "Retrieval Cluster",
   "Memory MCP": "Context Cluster",
   "File MCP": "Files Cluster",
+  "Atlas Blaxel MCP": "Sandbox Cluster",
 };
 
 const clusterPositions: Record<string, { x: number; y: number }> = {
-  "Gateway MCP": { x: 450, y: 100 },
-  "Search MCP": { x: 120, y: 265 },
-  "Memory MCP": { x: 780, y: 265 },
-  "File MCP": { x: 450, y: 535 },
+  "Gateway MCP": { x: 450, y: 120 },
+  "Search MCP": { x: 160, y: 310 },
+  "Memory MCP": { x: 760, y: 340 },
+  "File MCP": { x: 450, y: 530 },
+  "Atlas Blaxel MCP": { x: 760, y: 120 },
 };
 
 type GraphElement = {
   data: Record<string, string | number | null>;
   classes?: string;
+  position?: { x: number; y: number };
 };
 
 function formatTime(timestamp: number) {
@@ -70,12 +73,46 @@ function scaleEdgeWeight(volume: number) {
   return Math.min(8, Math.max(2.2, 1.5 + Math.sqrt(volume) * 0.72));
 }
 
+function formatToolLabel(toolName: string) {
+  const spaced = toolName
+    .replace(/^codegen/i, "")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .trim();
+
+  const words = spaced.split(/\s+/).filter(Boolean);
+  if (words.length <= 1) {
+    return words[0] ?? toolName;
+  }
+
+  const midpoint = Math.ceil(words.length / 2);
+  return `${words.slice(0, midpoint).join(" ")}\n${words.slice(midpoint).join(" ")}`;
+}
+
+function toolClusterPosition(server: string, index: number, total: number) {
+  const base = clusterPositions[server];
+  if (!base) {
+    return undefined;
+  }
+
+  const radius = total > 3 ? 120 : 104;
+  const angleStep = (Math.PI * 2) / Math.max(total, 1);
+  const angle = -Math.PI / 2 + index * angleStep;
+
+  return {
+    x: base.x + Math.cos(angle) * radius,
+    y: base.y + Math.sin(angle) * radius,
+  };
+}
+
 function buildTopologyElements(snapshot: DashboardSnapshot) {
   const flatNodes: GraphElement[] = snapshot.servers.map((server) => ({
     data: {
       id: server.name,
       label: server.name,
       status: server.status,
+      kind: "mcp",
+      clusterX: clusterPositions[server.name]?.x ?? null,
+      clusterY: clusterPositions[server.name]?.y ?? null,
     },
   }));
 
@@ -90,9 +127,49 @@ function buildTopologyElements(snapshot: DashboardSnapshot) {
     },
   }));
 
+  const toolNodes: GraphElement[] = [];
+  const toolEdges: GraphElement[] = [];
+
+  snapshot.toolsets.forEach((toolset) => {
+    const visibleTools = toolset.tools
+      .slice()
+      .sort((a, b) => b.requestCount - a.requestCount)
+      .slice(0, 4);
+    visibleTools.forEach((tool, index) => {
+      const nodeId = `${toolset.server}::${tool.id}`;
+      const clusterPosition = toolClusterPosition(toolset.server, index, visibleTools.length);
+
+      toolNodes.push({
+        data: {
+          id: nodeId,
+          label: formatToolLabel(tool.name),
+          kind: "tool",
+          status: null,
+          clusterX: clusterPosition?.x ?? null,
+          clusterY: clusterPosition?.y ?? null,
+          description: tool.description ?? "",
+          parentServer: toolset.server,
+        },
+        position: clusterPosition,
+      });
+
+      toolEdges.push({
+        data: {
+          id: `${toolset.server}->${nodeId}`,
+          source: nodeId,
+          target: toolset.server,
+          label: tool.requestCount > 0 ? `${tool.requestCount} req\n${tool.averageLatencyMs}ms` : "0 req",
+          weight: tool.requestCount > 0 ? Math.min(4.2, 1.6 + Math.sqrt(tool.requestCount) * 0.5) : 1.6,
+          volume: tool.requestCount,
+        },
+        classes: "tool-edge",
+      });
+    });
+  });
+
   return {
-    flat: [...flatNodes, ...flatEdges],
-    clustered: [...flatNodes, ...flatEdges],
+    flat: [...flatNodes, ...toolNodes, ...flatEdges, ...toolEdges],
+    clustered: [...flatNodes, ...toolNodes, ...flatEdges, ...toolEdges],
   };
 }
 
@@ -465,7 +542,7 @@ function OverviewPage({
         <div className="panel-header">
           <div>
             <h2>Topology Snapshot</h2>
-            <p>Current network structure and traffic flow between MCPs.</p>
+            <p>Current network structure, traffic flow, and attached tool capabilities for each MCP.</p>
           </div>
         </div>
         <TopologyGraph topologyElements={topologyElements} />
@@ -499,7 +576,7 @@ function TopologyPage({
         <div className="panel-header panel-header-stack">
           <div>
             <h2>MCP Topology Graph</h2>
-            <p>Directed edges stay readable, and cluster mode groups servers by role in the request pipeline.</p>
+            <p>Directed edges stay readable, cluster mode groups servers by role, and tool leaf nodes show exposed capabilities.</p>
           </div>
           <button
             type="button"
@@ -832,11 +909,12 @@ function TopologyGraph({
 
     if (clustered) {
       cy.nodes().forEach((node: any) => {
-        const nextPosition = clusterPositions[node.id()];
-        if (nextPosition) {
+        const clusterX = node.data("clusterX");
+        const clusterY = node.data("clusterY");
+        if (typeof clusterX === "number" && typeof clusterY === "number") {
           node.animate(
             {
-              position: nextPosition,
+              position: { x: clusterX, y: clusterY },
             },
             {
               duration: 560,
@@ -868,8 +946,9 @@ function TopologyGraph({
   return (
     <div className={`graph-wrap ${tall ? "graph-wrap-tall" : ""}`}>
       <CytoscapeComponent
+        className="graph-canvas"
         elements={topologyElements}
-        style={{ width: "100%", height: "100%" }}
+        style={{ width: "100%", height: "100%", position: "relative", zIndex: 1 }}
         layout={
           clustered
             ? {
@@ -902,6 +981,24 @@ function TopologyGraph({
               "border-color": "#e2e8f0",
               "text-wrap": "wrap",
               "text-max-width": "54px",
+            },
+          },
+          {
+            selector: 'node[kind = "tool"]',
+            style: {
+              shape: "ellipse",
+              width: 82,
+              height: 82,
+              "font-size": "8px",
+              "background-color": "#143454",
+              "border-width": 2,
+              "border-color": "#67e8f9",
+              color: "#e7fcff",
+              "text-max-width": "68px",
+              "text-wrap": "wrap",
+              "text-valign": "center",
+              "text-halign": "center",
+              "line-height": 1.15,
             },
           },
           {
@@ -938,6 +1035,26 @@ function TopologyGraph({
               "text-margin-y": "-8px",
             },
           },
+          {
+            selector: "edge.tool-edge",
+            style: {
+              width: "data(weight)",
+              "line-style": "solid",
+              "line-color": "#7dd3fc",
+              "target-arrow-shape": "triangle",
+              "target-arrow-color": "#7dd3fc",
+              "arrow-scale": 1.05,
+              opacity: 0.95,
+              label: "data(label)",
+              "font-size": "8px",
+              color: "#dff7ff",
+              "text-background-color": "#10243d",
+              "text-background-opacity": 0.92,
+              "text-background-padding": "2px",
+              "text-rotation": "autorotate",
+              "text-margin-y": "-6px",
+            },
+          },
         ]}
         cy={(cy: any) => {
           cyRef.current = cy;
@@ -956,6 +1073,9 @@ function TopologyGraph({
           </div>
           <div className="cluster-ring cluster-ring-files">
             <span>Files Cluster</span>
+          </div>
+          <div className="cluster-ring cluster-ring-sandbox">
+            <span>Sandbox Cluster</span>
           </div>
         </div>
       ) : null}
