@@ -7,6 +7,12 @@ This repository currently supports two practical modes:
 - local live mode: Atlas proxies real HTTP requests across three lightweight MCP-like services
 - Blaxel integration mode: Atlas can connect to a Blaxel sandbox MCP endpoint and discover workspace MCP functions
 
+# Video Demonstration
+https://github.com/user-attachments/assets/87a1d2d5-9ff5-4f31-92f7-3c10b5a88d16
+
+
+
+
 ## What Is Implemented
 
 - live local services for `Search MCP`, `Memory MCP`, and `File MCP`
