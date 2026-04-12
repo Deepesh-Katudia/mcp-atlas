@@ -29,6 +29,7 @@ describe("createApp", () => {
       store: new TelemetryStore(),
       registryService: {
         listMcps: async () => [],
+        getAdapter: () => null,
       },
       services: {
         telemetry: {

@@ -1,3 +1,4 @@
+import type { McpRegistryRecord } from "@mcp-atlas/contracts";
 import type { McpName } from "./types.js";
 
 export interface AtlasServiceTool {
@@ -56,3 +57,20 @@ export const serviceBySlug = Object.fromEntries(atlasServices.map((service) => [
   AtlasService["slug"],
   AtlasService
 >;
+
+export function toRegistryRecord(service: AtlasService): McpRegistryRecord & { url: string } {
+  return {
+    slug: service.slug,
+    name: service.name,
+    transport: "http",
+    status: "online",
+    tools: service.tools.map((tool) => ({
+      id: tool.id,
+      name: tool.name,
+      description: tool.description,
+      requestCount: 0,
+      averageLatencyMs: 0,
+    })),
+    url: service.url,
+  };
+}

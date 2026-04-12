@@ -1,3 +1,4 @@
+import type { McpAdapter } from "../adapters/types.js";
 import type { Alert, DashboardSnapshot, TelemetryEvent, TraceSummary } from "@mcp-atlas/contracts";
 import type { BlaxelStatus } from "../blaxel.js";
 import type { BlaxelFunctionRecord } from "../blaxel-functions.js";
@@ -27,6 +28,7 @@ export interface ApiRuntime {
   store: TelemetryStore;
   registryService: {
     listMcps(): Promise<unknown[]>;
+    getAdapter(slug: string): McpAdapter | null;
   };
   services: {
     telemetry: {

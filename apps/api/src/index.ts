@@ -4,12 +4,14 @@ import { createServer } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Server } from "socket.io";
+import { LocalHttpMcpAdapter } from "./adapters/local/local-http-mcp-adapter.js";
 import { createApp } from "./app/create-app.js";
 import { createRuntime } from "./app/runtime.js";
 import { BlaxelSandboxService } from "./blaxel.js";
 import { BlaxelFunctionsService } from "./blaxel-functions.js";
 import { BlaxelMcpService } from "./blaxel-mcp.js";
-import { atlasServices, serviceBySlug } from "./services.js";
+import { McpRegistryService } from "./modules/mcp-registry/mcp-registry-service.js";
+import { atlasServices, serviceBySlug, toRegistryRecord } from "./services.js";
 import type { McpName, McpToolInfo, McpToolset } from "./types.js";
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
@@ -37,6 +39,9 @@ let cachedBlaxelTools: McpToolInfo[] = [
   },
 ];
 let lastBlaxelToolRefreshAt = 0;
+const localRegistry = new McpRegistryService(
+  new Map(atlasServices.map((service) => [service.slug, new LocalHttpMcpAdapter(toRegistryRecord(service))])),
+);
 
 function nextId(prefix: string) {
   sequence += 1;
@@ -472,41 +477,10 @@ async function heartbeatServices() {
   }
 }
 
-async function listRegistryMcps() {
-  const snapshot = buildDashboardSnapshot();
-  const statusByName = new Map(snapshot.servers.map((server) => [server.name, server.status]));
-  const toolsetsByServer = new Map(snapshot.toolsets.map((toolset) => [toolset.server, toolset.tools]));
-  const records: Array<{
-    slug: string;
-    name: string;
-    transport: string;
-    status: "online" | "degraded" | "offline" | "configured";
-    tools: McpToolInfo[];
-    url: string | null;
-  }> = atlasServices.map((service) => ({
-    slug: service.slug,
-    name: service.name,
-    transport: "http",
-    status: statusByName.get(service.name) ?? "offline",
-    tools: toolsetsByServer.get(service.name) ?? [],
-    url: service.url,
-  }));
-
-  records.push({
-    slug: "atlas-blaxel-mcp",
-    name: "Atlas Blaxel MCP",
-    transport: "http-stream",
-    status: statusByName.get("Atlas Blaxel MCP") ?? "configured",
-    tools: toolsetsByServer.get("Atlas Blaxel MCP") ?? [],
-    url: blaxel.getStatus().sandboxMcpUrl,
-  });
-
-  return records;
-}
-
 const runtime = createRuntime(
   {
-    listMcps: listRegistryMcps,
+    listMcps: () => localRegistry.listMcps(),
+    getAdapter: (slug) => localRegistry.getAdapter(slug),
   },
   {
     getSnapshot: buildDashboardSnapshot,
