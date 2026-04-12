@@ -9,10 +9,6 @@ function sendInternalError(res: Response, error: unknown, fallback: string) {
 }
 
 export function registerCompatibilityRoutes(app: Express, compatibility: CompatibilityRuntime) {
-  app.get("/api/snapshot", (_req, res) => {
-    res.json(compatibility.getSnapshot());
-  });
-
   app.get("/api/integrations/blaxel", (_req, res) => {
     res.json(compatibility.getBlaxelStatus());
   });

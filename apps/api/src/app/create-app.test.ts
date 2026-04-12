@@ -30,6 +30,26 @@ describe("createApp", () => {
       registryService: {
         listMcps: async () => [],
       },
+      services: {
+        telemetry: {
+          ingest: vi.fn(),
+          snapshot: vi.fn().mockReturnValue(snapshot),
+        },
+        topology: {
+          fromSnapshot: vi.fn().mockReturnValue({
+            nodes: [],
+            edges: [],
+            toolsets: [],
+          }),
+        },
+        anomalies: {
+          list: vi.fn().mockReturnValue([]),
+        },
+        traces: {
+          list: vi.fn().mockReturnValue([]),
+          getById: vi.fn().mockReturnValue(null),
+        },
+      },
       compatibility: {
         getSnapshot: vi.fn().mockReturnValue(snapshot),
         getBlaxelStatus: vi.fn().mockReturnValue({

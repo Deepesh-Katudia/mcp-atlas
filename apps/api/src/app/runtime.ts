@@ -1,5 +1,10 @@
+import type { Alert, DashboardSnapshot, TelemetryEvent, TraceSummary } from "@mcp-atlas/contracts";
 import type { BlaxelStatus } from "../blaxel.js";
 import type { BlaxelFunctionRecord } from "../blaxel-functions.js";
+import { AnomaliesService } from "../modules/anomalies/anomalies-service.js";
+import { TraceQueryService } from "../modules/logs/trace-query-service.js";
+import { TelemetryService } from "../modules/telemetry/telemetry-service.js";
+import { TopologyService } from "../modules/topology/topology-service.js";
 import { TelemetryStore } from "../store.js";
 
 export interface CompatibilityRuntime {
@@ -23,16 +28,47 @@ export interface ApiRuntime {
   registryService: {
     listMcps(): Promise<unknown[]>;
   };
+  services: {
+    telemetry: {
+      ingest(event: TelemetryEvent): void;
+      snapshot(): DashboardSnapshot;
+    };
+    topology: {
+      fromSnapshot(snapshot: DashboardSnapshot): {
+        nodes: Array<{ id: string; status: string }>;
+        edges: DashboardSnapshot["dependencies"];
+        toolsets: DashboardSnapshot["toolsets"];
+      };
+    };
+    anomalies: {
+      list(snapshot: DashboardSnapshot): Alert[];
+    };
+    traces: {
+      list(snapshot: DashboardSnapshot): TraceSummary[];
+      getById(snapshot: DashboardSnapshot, traceId: string): TraceSummary | null;
+    };
+  };
   compatibility: CompatibilityRuntime;
 }
 
 export function createRuntime(
   registryService: ApiRuntime["registryService"],
   compatibility: CompatibilityRuntime,
+  options?: {
+    snapshotDecorator?: (snapshot: DashboardSnapshot) => DashboardSnapshot;
+  },
 ): ApiRuntime {
+  const store = new TelemetryStore();
+
   return {
-    store: new TelemetryStore(),
+    store,
     registryService,
+    services: {
+      telemetry: new TelemetryService(store, options?.snapshotDecorator),
+      topology: new TopologyService(),
+      anomalies: new AnomaliesService(),
+      traces: new TraceQueryService(),
+    },
     compatibility,
   };
 }

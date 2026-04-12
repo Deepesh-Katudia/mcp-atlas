@@ -2,6 +2,7 @@ import cors from "cors";
 import express from "express";
 import { registerCompatibilityRoutes } from "../routes/compatibility-routes.js";
 import { registerRegistryRoutes } from "../routes/registry-routes.js";
+import { registerSnapshotRoutes } from "../routes/snapshot-routes.js";
 import type { ApiRuntime } from "./runtime.js";
 
 export function createApp(runtime: ApiRuntime) {
@@ -11,6 +12,7 @@ export function createApp(runtime: ApiRuntime) {
   app.use(express.json());
 
   registerRegistryRoutes(app, runtime.registryService);
+  registerSnapshotRoutes(app, runtime.services);
   registerCompatibilityRoutes(app, runtime.compatibility);
 
   app.get("/health", (_req, res) => {

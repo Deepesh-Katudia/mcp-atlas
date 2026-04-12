@@ -1,3 +1,4 @@
+import type { DashboardSnapshot, TelemetryEvent } from "@mcp-atlas/contracts";
 import dotenv from "dotenv";
 import { createServer } from "node:http";
 import path from "node:path";
@@ -9,7 +10,7 @@ import { BlaxelSandboxService } from "./blaxel.js";
 import { BlaxelFunctionsService } from "./blaxel-functions.js";
 import { BlaxelMcpService } from "./blaxel-mcp.js";
 import { atlasServices, serviceBySlug } from "./services.js";
-import type { DashboardSnapshot, McpName, McpToolInfo, McpToolset, TelemetryEvent } from "./types.js";
+import type { McpName, McpToolInfo, McpToolset } from "./types.js";
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(currentDir, "../../../.env") });
@@ -43,7 +44,7 @@ function nextId(prefix: string) {
 }
 
 function emit(event: TelemetryEvent) {
-  runtime.store.ingest(event);
+  runtime.services.telemetry.ingest(event);
   io.emit("telemetry:event", event);
 }
 
@@ -118,10 +119,7 @@ function buildToolsets(now = Date.now()): McpToolset[] {
 }
 
 function buildDashboardSnapshot(): DashboardSnapshot {
-  return {
-    ...runtime.store.snapshot(),
-    toolsets: buildToolsets(),
-  };
+  return runtime.services.telemetry.snapshot();
 }
 
 async function refreshBlaxelTools(force = false) {
@@ -673,6 +671,12 @@ const runtime = createRuntime(
         throw error instanceof Error ? error : new Error("Agent task failed");
       }
     },
+  },
+  {
+    snapshotDecorator: (snapshot) => ({
+      ...snapshot,
+      toolsets: buildToolsets(),
+    }),
   },
 );
 
