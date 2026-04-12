@@ -5,6 +5,7 @@
   "workspaces": [
     "apps/server",
     "apps/web",
+    "packages/contracts",
     "services/search-mcp",
     "services/memory-mcp",
     "services/file-mcp"
@@ -16,7 +17,8 @@
     "dev:file": "npm run dev -w @mcp-atlas/file-mcp",
     "dev:server": "npm run dev -w @mcp-atlas/server",
     "dev:web": "npm run dev -w @mcp-atlas/web",
-    "build": "npm run build -w @mcp-atlas/search-mcp && npm run build -w @mcp-atlas/memory-mcp && npm run build -w @mcp-atlas/file-mcp && npm run build -w @mcp-atlas/server && npm run build -w @mcp-atlas/web"
+    "build": "npm run build -w @mcp-atlas/contracts && npm run build -w @mcp-atlas/search-mcp && npm run build -w @mcp-atlas/memory-mcp && npm run build -w @mcp-atlas/file-mcp && npm run build -w @mcp-atlas/server && npm run build -w @mcp-atlas/web",
+    "test": "npm run test -w @mcp-atlas/contracts"
   },
   "devDependencies": {
     "npm-run-all": "^4.1.5"
