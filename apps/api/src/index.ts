@@ -5,11 +5,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Server } from "socket.io";
 import { LocalHttpMcpAdapter } from "./adapters/local/local-http-mcp-adapter.js";
+import type { McpAdapter } from "./adapters/types.js";
+import { BlaxelSandboxAdapter } from "./adapters/blaxel/blaxel-sandbox-adapter.js";
 import { createApp } from "./app/create-app.js";
 import { createRuntime } from "./app/runtime.js";
 import { BlaxelSandboxService } from "./blaxel.js";
 import { BlaxelFunctionsService } from "./blaxel-functions.js";
 import { BlaxelMcpService } from "./blaxel-mcp.js";
+import { ControlsService } from "./modules/controls/controls-service.js";
 import { McpRegistryService } from "./modules/mcp-registry/mcp-registry-service.js";
 import { atlasServices, serviceBySlug, toRegistryRecord } from "./services.js";
 import type { McpName, McpToolInfo, McpToolset } from "./types.js";
@@ -39,9 +42,31 @@ let cachedBlaxelTools: McpToolInfo[] = [
   },
 ];
 let lastBlaxelToolRefreshAt = 0;
-const localRegistry = new McpRegistryService(
-  new Map(atlasServices.map((service) => [service.slug, new LocalHttpMcpAdapter(toRegistryRecord(service))])),
+const adapterMap = new Map<string, McpAdapter>(
+  atlasServices.map((service) => [service.slug, new LocalHttpMcpAdapter(toRegistryRecord(service))]),
 );
+adapterMap.set(
+  "atlas-blaxel-mcp",
+  new BlaxelSandboxAdapter(
+    {
+      slug: "atlas-blaxel-mcp",
+      name: "Atlas Blaxel MCP",
+      transport: "http-stream",
+      status: "configured",
+      tools: cachedBlaxelTools,
+      url: process.env.BLAXEL_MCP_URL ?? process.env.BLAXEL_SANDBOX_MCP_URL ?? blaxel.getStatus().sandboxMcpUrl,
+    },
+    blaxelMcp,
+  ),
+);
+const mcpRegistry = new McpRegistryService(adapterMap);
+const controls = new ControlsService({
+  registry: mcpRegistry,
+  telemetry: {
+    ingest: (event) => emit(event),
+  },
+  recordToolInvocation,
+});
 
 function nextId(prefix: string) {
   sequence += 1;
@@ -479,9 +504,10 @@ async function heartbeatServices() {
 
 const runtime = createRuntime(
   {
-    listMcps: () => localRegistry.listMcps(),
-    getAdapter: (slug) => localRegistry.getAdapter(slug),
+    listMcps: () => mcpRegistry.listMcps(),
+    getAdapter: (slug) => mcpRegistry.getAdapter(slug),
   },
+  controls,
   {
     getSnapshot: buildDashboardSnapshot,
     getBlaxelStatus: () => blaxel.getStatus(),
@@ -549,102 +575,16 @@ const runtime = createRuntime(
       result: await blaxelMcp.callTool(toolName, payload),
     }),
     runBlaxelProcessesList: async () => {
-      const traceId = nextId("trace");
-      const requestId = nextId("req");
-      const result = await callBlaxelSandboxTool({
-        traceId,
-        requestId,
-        toolName: "processesList",
-        payload: {},
-      });
-      return { ok: true, traceId, requestId, result };
+      return runtime.controls.runBlaxelProcessesList();
     },
     listServices: () => atlasServices,
-    proxyRequest: async (mcpName, payload) => {
-      const targetService = serviceBySlug[mcpName as keyof typeof serviceBySlug];
-      if (!targetService) {
-        throw new Error("Unknown MCP service");
-      }
-
-      const traceId = nextId("trace");
-      const requestId = nextId("req");
-      const data = await callService({
-        traceId,
-        requestId,
-        sourceMcp: "Gateway MCP",
-        targetMcp: targetService.name,
-        payload,
-      });
-
-      return {
-        traceId,
-        requestId,
-        target: targetService.name,
-        data,
-      };
-    },
-    runAgentTask: async (payload) => {
-      const traceId = nextId("trace");
-      const requestId = nextId("req");
-      const query =
-        typeof payload === "object" && payload && "query" in payload
-          ? String((payload as { query?: unknown }).query ?? "alignment observability")
-          : "alignment observability";
-      const forceFileFailure =
-        typeof payload === "object" && payload && "forceFileFailure" in payload
-          ? Boolean((payload as { forceFileFailure?: unknown }).forceFileFailure)
-          : false;
-      const startedAt = Date.now();
-
-      try {
-        const search = await callService({
-          traceId,
-          requestId,
-          sourceMcp: "Gateway MCP",
-          targetMcp: "Search MCP",
-          payload: { query },
-        });
-        const memory = await callService({
-          traceId,
-          requestId,
-          sourceMcp: "Search MCP",
-          targetMcp: "Memory MCP",
-          payload: { topic: query, userId: "u1" },
-        });
-        const file = await callService({
-          traceId,
-          requestId,
-          sourceMcp: "Memory MCP",
-          targetMcp: "File MCP",
-          payload: { filename: "atlas-notes.txt", forceFailure: forceFileFailure },
-        });
-
-        recordToolInvocation({
-          server: "Gateway MCP",
-          toolId: "agent-task",
-          latencyMs: Date.now() - startedAt,
-          status: "ok",
-        });
-
-        return {
-          traceId,
-          requestId,
-          result: {
-            search,
-            memory,
-            file,
-          },
-        };
-      } catch (error) {
-        recordToolInvocation({
-          server: "Gateway MCP",
-          toolId: "agent-task",
-          latencyMs: Date.now() - startedAt,
-          status: "error",
-        });
-        throw error instanceof Error ? error : new Error("Agent task failed");
-      }
-    },
+    proxyRequest: async (mcpName, payload) =>
+      runtime.controls.proxyMcpTool(
+        mcpName,
+        serviceBySlug[mcpName as keyof typeof serviceBySlug]?.tools[0]?.id ?? mcpName,
+        payload as Record<string, unknown>,
+      ),
+    runAgentTask: async (payload) => runtime.controls.runAgentTask(payload as { query?: string; forceFileFailure?: boolean }),
   },
   {
     snapshotDecorator: (snapshot) => ({

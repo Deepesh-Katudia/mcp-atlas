@@ -50,11 +50,19 @@ export interface ApiRuntime {
       getById(snapshot: DashboardSnapshot, traceId: string): TraceSummary | null;
     };
   };
+  controls: {
+    callMcpTool(slug: string, toolName: string, payload: Record<string, unknown>): Promise<unknown>;
+    proxyMcpTool(slug: string, toolName: string, payload: Record<string, unknown>): Promise<unknown>;
+    runAgentTask(payload?: { query?: string; forceFileFailure?: boolean }): Promise<unknown>;
+    runFailureScenario(payload?: { query?: string }): Promise<unknown>;
+    runBlaxelProcessesList(): Promise<unknown>;
+  };
   compatibility: CompatibilityRuntime;
 }
 
 export function createRuntime(
   registryService: ApiRuntime["registryService"],
+  controls: ApiRuntime["controls"],
   compatibility: CompatibilityRuntime,
   options?: {
     snapshotDecorator?: (snapshot: DashboardSnapshot) => DashboardSnapshot;
@@ -71,6 +79,7 @@ export function createRuntime(
       anomalies: new AnomaliesService(),
       traces: new TraceQueryService(),
     },
+    controls,
     compatibility,
   };
 }

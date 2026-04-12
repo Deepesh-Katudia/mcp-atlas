@@ -1,6 +1,7 @@
 import cors from "cors";
 import express from "express";
 import { registerCompatibilityRoutes } from "../routes/compatibility-routes.js";
+import { registerControlRoutes } from "../routes/control-routes.js";
 import { registerRegistryRoutes } from "../routes/registry-routes.js";
 import { registerSnapshotRoutes } from "../routes/snapshot-routes.js";
 import type { ApiRuntime } from "./runtime.js";
@@ -13,6 +14,7 @@ export function createApp(runtime: ApiRuntime) {
 
   registerRegistryRoutes(app, runtime.registryService);
   registerSnapshotRoutes(app, runtime.services);
+  registerControlRoutes(app, runtime.controls);
   registerCompatibilityRoutes(app, runtime.compatibility);
 
   app.get("/health", (_req, res) => {

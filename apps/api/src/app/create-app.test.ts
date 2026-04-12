@@ -51,6 +51,13 @@ describe("createApp", () => {
           getById: vi.fn().mockReturnValue(null),
         },
       },
+      controls: {
+        callMcpTool: vi.fn(),
+        proxyMcpTool: vi.fn(),
+        runAgentTask: vi.fn(),
+        runFailureScenario: vi.fn(),
+        runBlaxelProcessesList: vi.fn(),
+      },
       compatibility: {
         getSnapshot: vi.fn().mockReturnValue(snapshot),
         getBlaxelStatus: vi.fn().mockReturnValue({
