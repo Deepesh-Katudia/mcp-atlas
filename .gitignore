@@ -7,5 +7,5 @@ coverage
 .env
 *.tsbuildinfo
 tmp-blaxel-*.html
-logs/
+/logs/
 .worktrees/
