@@ -18,7 +18,7 @@
     "dev:api": "npm run dev -w @mcp-atlas/api",
     "dev:web": "npm run dev -w @mcp-atlas/web",
     "build": "npm run build -w @mcp-atlas/contracts && npm run build -w @mcp-atlas/search-mcp && npm run build -w @mcp-atlas/memory-mcp && npm run build -w @mcp-atlas/file-mcp && npm run build -w @mcp-atlas/api && npm run build -w @mcp-atlas/web",
-    "test": "npm run test -w @mcp-atlas/contracts && npm run test -w @mcp-atlas/api"
+    "test": "npm run test -w @mcp-atlas/contracts && npm run test -w @mcp-atlas/api && npm run test -w @mcp-atlas/web"
   },
   "devDependencies": {
     "npm-run-all": "^4.1.5"
