@@ -1,30 +1,26 @@
-import cors from "cors";
+import type { DashboardSnapshot, TelemetryEvent } from "@mcp-atlas/contracts";
 import dotenv from "dotenv";
-import express from "express";
 import { createServer } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Server } from "socket.io";
+import { LocalHttpMcpAdapter } from "./adapters/local/local-http-mcp-adapter.js";
+import type { McpAdapter } from "./adapters/types.js";
+import { BlaxelSandboxAdapter } from "./adapters/blaxel/blaxel-sandbox-adapter.js";
+import { createApp } from "./app/create-app.js";
+import { createRuntime } from "./app/runtime.js";
 import { BlaxelSandboxService } from "./blaxel.js";
 import { BlaxelFunctionsService } from "./blaxel-functions.js";
 import { BlaxelMcpService } from "./blaxel-mcp.js";
-import { atlasServices, serviceBySlug } from "./services.js";
-import { TelemetryStore } from "./store.js";
-import type { DashboardSnapshot, McpName, McpToolInfo, McpToolset, TelemetryEvent } from "./types.js";
+import { ControlsService } from "./modules/controls/controls-service.js";
+import { McpRegistryService } from "./modules/mcp-registry/mcp-registry-service.js";
+import { atlasServices, serviceBySlug, toRegistryRecord } from "./services.js";
+import type { McpName, McpToolInfo, McpToolset } from "./types.js";
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(currentDir, "../../../.env") });
 
 const port = Number(process.env.PORT ?? 4000);
-const app = express();
-const httpServer = createServer(app);
-const io = new Server(httpServer, {
-  cors: {
-    origin: "*",
-  },
-});
-
-const store = new TelemetryStore();
 const blaxel = new BlaxelSandboxService();
 const blaxelFunctions = new BlaxelFunctionsService();
 const blaxelMcp = new BlaxelMcpService();
@@ -46,6 +42,31 @@ let cachedBlaxelTools: McpToolInfo[] = [
   },
 ];
 let lastBlaxelToolRefreshAt = 0;
+const adapterMap = new Map<string, McpAdapter>(
+  atlasServices.map((service) => [service.slug, new LocalHttpMcpAdapter(toRegistryRecord(service))]),
+);
+adapterMap.set(
+  "atlas-blaxel-mcp",
+  new BlaxelSandboxAdapter(
+    {
+      slug: "atlas-blaxel-mcp",
+      name: "Atlas Blaxel MCP",
+      transport: "http-stream",
+      status: "configured",
+      tools: cachedBlaxelTools,
+      url: process.env.BLAXEL_MCP_URL ?? process.env.BLAXEL_SANDBOX_MCP_URL ?? blaxel.getStatus().sandboxMcpUrl,
+    },
+    blaxelMcp,
+  ),
+);
+const mcpRegistry = new McpRegistryService(adapterMap);
+const controls = new ControlsService({
+  registry: mcpRegistry,
+  telemetry: {
+    ingest: (event) => emit(event),
+  },
+  recordToolInvocation,
+});
 
 function nextId(prefix: string) {
   sequence += 1;
@@ -53,7 +74,7 @@ function nextId(prefix: string) {
 }
 
 function emit(event: TelemetryEvent) {
-  store.ingest(event);
+  runtime.services.telemetry.ingest(event);
   io.emit("telemetry:event", event);
 }
 
@@ -112,11 +133,13 @@ function buildToolsets(now = Date.now()): McpToolset[] {
     },
     ...atlasServices.map((service) => ({
       server: service.name,
-      tools: service.tools.map((tool) => withMetrics(service.name, {
-        id: tool.id,
-        name: tool.name,
-        description: tool.description,
-      })),
+      tools: service.tools.map((tool) =>
+        withMetrics(service.name, {
+          id: tool.id,
+          name: tool.name,
+          description: tool.description,
+        }),
+      ),
     })),
     {
       server: "Atlas Blaxel MCP",
@@ -126,10 +149,7 @@ function buildToolsets(now = Date.now()): McpToolset[] {
 }
 
 function buildDashboardSnapshot(): DashboardSnapshot {
-  return {
-    ...store.snapshot(),
-    toolsets: buildToolsets(),
-  };
+  return runtime.services.telemetry.snapshot();
 }
 
 async function refreshBlaxelTools(force = false) {
@@ -140,22 +160,20 @@ async function refreshBlaxelTools(force = false) {
 
   try {
     const result = await blaxelMcp.listTools();
-    const discovered = result.tools
-      .slice(0, 4)
-      .map((tool) => ({
-        id: tool.name,
-        name: tool.name,
-        description: tool.description ?? null,
-        requestCount: 0,
-        averageLatencyMs: 0,
-      }));
+    const discovered = result.tools.slice(0, 4).map((tool) => ({
+      id: tool.name,
+      name: tool.name,
+      description: tool.description ?? null,
+      requestCount: 0,
+      averageLatencyMs: 0,
+    }));
 
     if (discovered.length > 0) {
       cachedBlaxelTools = discovered;
       lastBlaxelToolRefreshAt = now;
     }
   } catch {
-    // Keep last known tool catalog if discovery fails.
+    // Keep the last known tool catalog if discovery fails.
   }
 }
 
@@ -231,7 +249,9 @@ async function callService({
 
     const data = (await response.json()) as unknown;
     if (!response.ok) {
-      throw new Error(typeof data === "object" && data && "error" in data ? String((data as { error: string }).error) : `HTTP ${response.status}`);
+      throw new Error(
+        typeof data === "object" && data && "error" in data ? String((data as { error: string }).error) : `HTTP ${response.status}`,
+      );
     }
 
     recordToolInvocation({
@@ -308,7 +328,7 @@ async function callBlaxelFunctionTool({
 
   const target = await blaxelFunctions.resolveFunction(functionName);
   if (!target?.url) {
-    throw new Error(`Blaxel function ${functionName} is not available`);
+    throw new Error("Function not found or missing MCP URL");
   }
 
   try {
@@ -482,258 +502,104 @@ async function heartbeatServices() {
   }
 }
 
-app.use(cors());
-app.use(express.json());
+const runtime = createRuntime(
+  {
+    listMcps: () => mcpRegistry.listMcps(),
+    getAdapter: (slug) => mcpRegistry.getAdapter(slug),
+  },
+  controls,
+  {
+    getSnapshot: buildDashboardSnapshot,
+    getBlaxelStatus: () => blaxel.getStatus(),
+    listBlaxelFunctions: () => blaxelFunctions.listFunctions(),
+    testBlaxelFunction: async (functionName) => {
+      const target = await blaxelFunctions.resolveFunction(functionName);
+      if (!target?.url) {
+        return { ok: false, error: "Function not found or missing MCP URL" };
+      }
 
-app.get("/health", (_req, res) => {
-  res.json({ ok: true });
-});
+      const tools = await blaxelMcp.listToolsAt(target.url);
+      return {
+        ok: true,
+        function: target,
+        toolCount: tools.tools.length,
+        tools: tools.tools.map((tool) => ({
+          name: tool.name,
+          description: tool.description,
+        })),
+      };
+    },
+    listBlaxelTools: async (functionName) => {
+      const target = await blaxelFunctions.resolveFunction(functionName);
+      if (!target?.url) {
+        return { ok: false, error: "Function not found or missing MCP URL" };
+      }
 
-app.get("/api/snapshot", (_req, res) => {
-  res.json(buildDashboardSnapshot());
-});
-
-app.get("/api/integrations/blaxel", (_req, res) => {
-  res.json(blaxel.getStatus());
-});
-
-app.get("/api/integrations/blaxel/functions", async (_req, res) => {
-  try {
-    const functions = await blaxelFunctions.listFunctions();
-    res.json({ ok: true, functions });
-  } catch (error) {
-    res.status(502).json({
-      ok: false,
-      error: error instanceof Error ? error.message : "Blaxel functions discovery failed",
-    });
-  }
-});
-
-app.get("/api/integrations/blaxel/functions/:functionName/test", async (req, res) => {
-  try {
-    const target = await blaxelFunctions.resolveFunction(req.params.functionName);
-    if (!target || !target.url) {
-      res.status(404).json({ ok: false, error: "Function not found or missing MCP URL" });
-      return;
-    }
-    const tools = await blaxelMcp.listToolsAt(target.url);
-    res.json({
+      const tools = await blaxelMcp.listToolsAt(target.url);
+      return {
+        ok: true,
+        function: target,
+        tools: tools.tools.map((tool) => ({
+          name: tool.name,
+          description: tool.description,
+        })),
+      };
+    },
+    callBlaxelFunctionTool: async (functionName, toolName, payload) => {
+      const traceId = nextId("trace");
+      const requestId = nextId("req");
+      const result = await callBlaxelFunctionTool({
+        traceId,
+        requestId,
+        functionName,
+        toolName,
+        payload,
+      });
+      return {
+        ok: true,
+        traceId,
+        requestId,
+        ...result,
+      };
+    },
+    pingBlaxelMcp: async () => ({
       ok: true,
-      function: target,
-      toolCount: tools.tools.length,
-      tools: tools.tools.map((tool) => ({
-        name: tool.name,
-        description: tool.description,
-      })),
-    });
-  } catch (error) {
-    res.status(502).json({
-      ok: false,
-      error: error instanceof Error ? error.message : "Blaxel function MCP test failed",
-    });
-  }
-});
-
-app.get("/api/integrations/blaxel/functions/:functionName/tools", async (req, res) => {
-  try {
-    const target = await blaxelFunctions.resolveFunction(req.params.functionName);
-    if (!target || !target.url) {
-      res.status(404).json({ ok: false, error: "Function not found or missing MCP URL" });
-      return;
-    }
-    const tools = await blaxelMcp.listToolsAt(target.url);
-    res.json({
+      result: await blaxelMcp.ping(),
+    }),
+    listBlaxelMcpTools: async () => ({
       ok: true,
-      function: target,
-      tools: tools.tools.map((tool) => ({
-        name: tool.name,
-        description: tool.description,
-      })),
-    });
-  } catch (error) {
-    res.status(502).json({
-      ok: false,
-      error: error instanceof Error ? error.message : "Blaxel function tool discovery failed",
-    });
-  }
-});
-
-app.post("/api/integrations/blaxel/functions/:functionName/tools/:toolName", async (req, res) => {
-  const traceId = nextId("trace");
-  const requestId = nextId("req");
-  try {
-    const result = await callBlaxelFunctionTool({
-      traceId,
-      requestId,
-      functionName: req.params.functionName,
-      toolName: req.params.toolName,
-      payload: (req.body ?? {}) as Record<string, unknown>,
-    });
-    res.json({
+      ...(await blaxelMcp.listTools()),
+    }),
+    callBlaxelMcpTool: async (toolName, payload) => ({
       ok: true,
-      traceId,
-      requestId,
-      ...result,
-    });
-  } catch (error) {
-    res.status(502).json({
-      ok: false,
-      traceId,
-      requestId,
-      error: error instanceof Error ? error.message : "Blaxel function tool call failed",
-    });
-  }
-});
+      result: await blaxelMcp.callTool(toolName, payload),
+    }),
+    runBlaxelProcessesList: async () => {
+      return runtime.controls.runBlaxelProcessesList();
+    },
+    listServices: () => atlasServices,
+    proxyRequest: async (mcpName, payload) =>
+      runtime.controls.proxyMcpTool(
+        mcpName,
+        serviceBySlug[mcpName as keyof typeof serviceBySlug]?.tools[0]?.id ?? mcpName,
+        payload as Record<string, unknown>,
+      ),
+    runAgentTask: async (payload) => runtime.controls.runAgentTask(payload as { query?: string; forceFileFailure?: boolean }),
+  },
+  {
+    snapshotDecorator: (snapshot) => ({
+      ...snapshot,
+      toolsets: buildToolsets(),
+    }),
+  },
+);
 
-app.get("/api/integrations/blaxel/mcp/ping", async (_req, res) => {
-  try {
-    const result = await blaxelMcp.ping();
-    res.json({ ok: true, result });
-  } catch (error) {
-    res.status(502).json({
-      ok: false,
-      error: error instanceof Error ? error.message : "Blaxel MCP ping failed",
-    });
-  }
-});
-
-app.get("/api/integrations/blaxel/mcp/tools", async (_req, res) => {
-  try {
-    const result = await blaxelMcp.listTools();
-    res.json({ ok: true, ...result });
-  } catch (error) {
-    res.status(502).json({
-      ok: false,
-      error: error instanceof Error ? error.message : "Blaxel MCP tools request failed",
-    });
-  }
-});
-
-app.post("/api/integrations/blaxel/mcp/tools/:toolName", async (req, res) => {
-  try {
-    const result = await blaxelMcp.callTool(req.params.toolName, req.body ?? {});
-    res.json({ ok: true, result });
-  } catch (error) {
-    res.status(502).json({
-      ok: false,
-      error: error instanceof Error ? error.message : "Blaxel MCP tool call failed",
-    });
-  }
-});
-
-app.post("/api/integrations/blaxel/mcp/demo/processes-list", async (_req, res) => {
-  const traceId = nextId("trace");
-  const requestId = nextId("req");
-  try {
-    const result = await callBlaxelSandboxTool({
-      traceId,
-      requestId,
-      toolName: "processesList",
-      payload: {},
-    });
-    res.json({ ok: true, traceId, requestId, result });
-  } catch (error) {
-    res.status(502).json({
-      ok: false,
-      traceId,
-      requestId,
-      error: error instanceof Error ? error.message : "Blaxel sandbox demo failed",
-    });
-  }
-});
-
-app.get("/api/services", (_req, res) => {
-  res.json(atlasServices);
-});
-
-app.post("/proxy/:mcpName", async (req, res) => {
-  const targetService = serviceBySlug[req.params.mcpName as keyof typeof serviceBySlug];
-  if (!targetService) {
-    res.status(404).json({ error: "Unknown MCP service" });
-    return;
-  }
-
-  const traceId = nextId("trace");
-  const requestId = nextId("req");
-
-  try {
-    const data = await callService({
-      traceId,
-      requestId,
-      sourceMcp: "Gateway MCP",
-      targetMcp: targetService.name,
-      payload: req.body,
-    });
-    res.json({ traceId, requestId, target: targetService.name, data });
-  } catch (error) {
-    res.status(502).json({
-      traceId,
-      requestId,
-      target: targetService.name,
-      error: error instanceof Error ? error.message : "Proxy request failed",
-    });
-  }
-});
-
-app.post("/api/demo/agent-task", async (req, res) => {
-  const traceId = nextId("trace");
-  const requestId = nextId("req");
-  const query = String(req.body?.query ?? "alignment observability");
-  const forceFileFailure = Boolean(req.body?.forceFileFailure);
-  const startedAt = Date.now();
-
-  try {
-    const search = await callService({
-      traceId,
-      requestId,
-      sourceMcp: "Gateway MCP",
-      targetMcp: "Search MCP",
-      payload: { query },
-    });
-    const memory = await callService({
-      traceId,
-      requestId,
-      sourceMcp: "Search MCP",
-      targetMcp: "Memory MCP",
-      payload: { topic: query, userId: "u1" },
-    });
-    const file = await callService({
-      traceId,
-      requestId,
-      sourceMcp: "Memory MCP",
-      targetMcp: "File MCP",
-      payload: { filename: "atlas-notes.txt", forceFailure: forceFileFailure },
-    });
-
-    recordToolInvocation({
-      server: "Gateway MCP",
-      toolId: "agent-task",
-      latencyMs: Date.now() - startedAt,
-      status: "ok",
-    });
-
-    res.json({
-      traceId,
-      requestId,
-      result: {
-        search,
-        memory,
-        file,
-      },
-    });
-  } catch (error) {
-    recordToolInvocation({
-      server: "Gateway MCP",
-      toolId: "agent-task",
-      latencyMs: Date.now() - startedAt,
-      status: "error",
-    });
-    res.status(502).json({
-      traceId,
-      requestId,
-      error: error instanceof Error ? error.message : "Agent task failed",
-    });
-  }
+const app = createApp(runtime);
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*",
+  },
 });
 
 io.on("connection", (socket) => {
@@ -752,7 +618,7 @@ setInterval(() => {
 }, 4_000);
 
 httpServer.listen(port, () => {
-  console.log(`MCP Atlas server listening on http://localhost:${port}`);
+  console.log(`MCP Atlas API running on http://localhost:${port}`);
 });
 
 const shutdown = () => {
