@@ -4,7 +4,6 @@ import { io } from "socket.io-client";
 import { apiBase, apiClient } from "../api/client";
 import type { BlaxelFunctionRecord, BlaxelToolRecord, DashboardSnapshot, TraceSummary } from "../types";
 import {
-  ActionBar,
   MetricCard,
   buildTopologyElements,
   formatTime,
@@ -32,6 +31,12 @@ export type DashboardAppContextValue = {
   functionToolState: Record<string, string>;
   onTestFunction: (functionName: string) => Promise<void>;
   onLoadTools: (functionName: string) => Promise<void>;
+  actionPending: boolean;
+  actionMessage: string | null;
+  onRunAgentTask: () => Promise<void>;
+  onRunSearch: () => Promise<void>;
+  onRunFailure: () => Promise<void>;
+  onRunBlaxelTask: () => Promise<void>;
 };
 
 export function useDashboardAppContext() {
@@ -233,24 +238,6 @@ export function DashboardApp() {
     <App
       generatedAt={snapshot?.generatedAt ?? null}
       overview={snapshot?.overview ?? null}
-      actionBar={
-        <ActionBar
-          pending={actionState.pending || !snapshot}
-          message={snapshot ? actionState.message : "Loading dashboard data..."}
-          onRunAgentTask={() =>
-            runApiAction(() => apiClient.triggerAgentTask(), "Agent task completed", setActionState)
-          }
-          onRunSearch={() => runApiAction(() => apiClient.triggerSearch(), "Search MCP called", setActionState)}
-          onRunFailure={() => runApiAction(() => apiClient.triggerFailure(), "Failure scenario triggered", setActionState)}
-          onRunBlaxelTask={() =>
-            runApiAction(
-              () => apiClient.triggerBlaxelProcessesList(),
-              "Blaxel sandbox MCP trace completed",
-              setActionState,
-            )
-          }
-        />
-      }
     >
       {snapshot ? (
         <Outlet
@@ -266,6 +253,18 @@ export function DashboardApp() {
             functionToolState,
             onTestFunction: testBlaxelFunction,
             onLoadTools: loadBlaxelTools,
+            actionPending: actionState.pending || !snapshot,
+            actionMessage: snapshot ? actionState.message : "Loading dashboard data...",
+            onRunAgentTask: () => runApiAction(() => apiClient.triggerAgentTask(), "Agent task completed", setActionState),
+            onRunSearch: () => runApiAction(() => apiClient.triggerSearch(), "Search MCP called", setActionState),
+            onRunFailure: () =>
+              runApiAction(() => apiClient.triggerFailure(), "Failure scenario triggered", setActionState),
+            onRunBlaxelTask: () =>
+              runApiAction(
+                () => apiClient.triggerBlaxelProcessesList(),
+                "Blaxel sandbox MCP trace completed",
+                setActionState,
+              ),
           } satisfies DashboardAppContextValue}
         />
       ) : null}

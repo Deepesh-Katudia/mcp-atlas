@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { AlertList, TopologyGraph } from "../app/dashboard-shared";
 import { useDashboardAppContext } from "../app/App";
+import { AlertList } from "../features/overview/OverviewCards";
+import { TopologyGraph } from "../features/topology/TopologyGraph";
 
 export function TopologyPage() {
   const { snapshot, graphElements } = useDashboardAppContext();
