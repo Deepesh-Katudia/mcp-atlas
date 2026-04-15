@@ -216,8 +216,8 @@ const blaxelFunctions: BlaxelFunctionRecord[] = [
 ];
 
 describe("OverviewSummary", () => {
-  it("renders the executive summary sections, quick links, and registry coverage", () => {
-    render(
+  it("renders the executive summary sections, quick links, registry coverage, and dashboard grid contract", () => {
+    const { container } = render(
       <MemoryRouter>
         <OverviewSummary
           snapshot={snapshot}
@@ -231,6 +231,11 @@ describe("OverviewSummary", () => {
         />
       </MemoryRouter>,
     );
+
+    const overviewGrid = container.querySelector(".overview-summary.dashboard-grid");
+    expect(overviewGrid).not.toBeNull();
+    expect(overviewGrid?.querySelector(".panel.panel-full.summary-hero")).not.toBeNull();
+    expect(overviewGrid?.querySelector(".panel.panel-wide.summary-panel-dark")).not.toBeNull();
 
     expect(screen.getByRole("heading", { name: /executive summary/i })).toBeInTheDocument();
     expect(screen.getByText("Active Servers")).toBeInTheDocument();

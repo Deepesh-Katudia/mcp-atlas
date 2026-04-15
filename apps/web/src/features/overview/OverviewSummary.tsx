@@ -37,7 +37,7 @@ export function OverviewSummary({
   const loadedToolCount = Object.values(functionTools).reduce((total, tools) => total + tools.length, 0);
 
   return (
-    <section className="overview-summary">
+    <section className="overview-summary dashboard-grid">
       <article className="panel panel-full summary-hero">
         <div className="panel-header panel-header-stack">
           <div>
