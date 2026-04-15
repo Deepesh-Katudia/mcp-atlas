@@ -18,19 +18,22 @@ export function McpRegistryPanel({
   return (
     <div className="registry-list">
       {blaxelFunctions.length === 0 ? (
-        <p className="empty">No deployed Blaxel MCP servers were discovered in workspace dk09.</p>
+        <p className="empty summary-empty">No deployed Blaxel MCP servers were discovered in workspace dk09.</p>
       ) : (
         blaxelFunctions.map((item) => (
           <div key={item.name} className="registry-card">
             <div className="registry-top">
-              <strong>{item.displayName}</strong>
+              <div>
+                <strong>{item.displayName}</strong>
+                <p className="registry-transport">
+                  {item.transport}
+                  {item.url ? ` - ${item.url}` : ""}
+                </p>
+              </div>
               <span className={`status-pill ${item.enabled ? "status-online" : "status-offline"}`}>{item.status}</span>
             </div>
-            <p>
-              {item.transport} {item.url ? `- ${item.url}` : ""}
-            </p>
             <div className="registry-actions">
-              <button type="button" className="action-button" onClick={() => void onTestFunction(item.name)}>
+              <button type="button" className="action-button action-button-secondary" onClick={() => void onTestFunction(item.name)}>
                 Test Connection
               </button>
               <button

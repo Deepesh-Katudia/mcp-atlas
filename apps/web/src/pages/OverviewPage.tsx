@@ -1,6 +1,5 @@
 import { LiveTrafficControls } from "../features/controls/LiveTrafficControls";
-import { OverviewCards } from "../features/overview/OverviewCards";
-import { McpRegistryPanel } from "../features/registry/McpRegistryPanel";
+import { OverviewSummary } from "../features/overview/OverviewSummary";
 import { useDashboardAppContext } from "../app/App";
 
 export function OverviewPage() {
@@ -41,24 +40,16 @@ export function OverviewPage() {
         onRunFailure={() => void onRunFailure()}
         onRunBlaxelTask={() => void onRunBlaxelTask()}
       />
-      <OverviewCards snapshot={snapshot} graphElements={graphElements}>
-        <article className="panel panel-wide">
-          <div className="panel-header">
-            <div>
-              <h2>Blaxel MCP Registry</h2>
-              <p>Workspace-discovered MCP servers from Blaxel with backend-side connection testing.</p>
-            </div>
-          </div>
-          <McpRegistryPanel
-            blaxelFunctions={blaxelFunctions}
-            functionTestState={functionTestState}
-            functionTools={functionTools}
-            functionToolState={functionToolState}
-            onTestFunction={onTestFunction}
-            onLoadTools={onLoadTools}
-          />
-        </article>
-      </OverviewCards>
+      <OverviewSummary
+        snapshot={snapshot}
+        graphElements={graphElements}
+        blaxelFunctions={blaxelFunctions}
+        functionTestState={functionTestState}
+        functionTools={functionTools}
+        functionToolState={functionToolState}
+        onTestFunction={onTestFunction}
+        onLoadTools={onLoadTools}
+      />
     </>
   );
 }
