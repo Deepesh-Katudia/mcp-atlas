@@ -6,10 +6,12 @@ export function TopologyGraph({
   topologyElements,
   tall = false,
   clustered = false,
+  className = "",
 }: {
   topologyElements: GraphElement[];
   tall?: boolean;
   clustered?: boolean;
+  className?: string;
 }) {
   const cyRef = useRef<any>(null);
 
@@ -56,7 +58,7 @@ export function TopologyGraph({
   }, [clustered, topologyElements]);
 
   return (
-    <div className={`graph-wrap ${tall ? "graph-wrap-tall" : ""}`}>
+    <div className={`graph-wrap ${tall ? "graph-wrap-tall" : ""} ${className}`.trim()}>
       <CytoscapeComponent
         className="graph-canvas"
         elements={topologyElements}
