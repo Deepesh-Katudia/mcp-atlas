@@ -74,6 +74,14 @@ table {
   line-height: 0.95;
 }
 
+.eyebrow {
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  font-size: 0.72rem;
+  color: #fda4af;
+}
+
 .sidebar-kicker,
 .page-eyebrow {
   margin: 0 0 10px;
@@ -232,6 +240,11 @@ table {
   box-shadow: 0 18px 38px rgba(2, 6, 23, 0.34);
 }
 
+.metric-card,
+.panel {
+  color: #e5eef8;
+}
+
 .nav-link {
   display: inline-flex;
   align-items: center;
@@ -271,6 +284,7 @@ table {
 
 .metric-card strong {
   font-size: 1.9rem;
+  color: #f8fafc;
 }
 
 .app-content {
