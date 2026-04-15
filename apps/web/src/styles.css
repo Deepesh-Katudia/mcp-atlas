@@ -84,7 +84,11 @@ table {
 }
 
 .sidebar-description,
-.page-header p,
+.page-header p {
+  margin: 0;
+  color: #4b5563;
+}
+
 .panel-header p,
 .trace-banner p,
 .alert-card p,
@@ -93,7 +97,7 @@ table {
 .hop-card p,
 .edge-card p {
   margin: 0;
-  color: #4b5563;
+  color: #a8bbd3;
 }
 
 .sidebar-nav,
@@ -167,12 +171,13 @@ table {
 .action-bar {
   display: grid;
   gap: 14px;
-  margin-top: 18px;
+  margin-bottom: 18px;
   padding: 18px;
-  border-radius: 22px;
-  border: 1px solid rgba(17, 17, 17, 0.08);
-  background: #ffffff;
-  box-shadow: 0 10px 30px rgba(17, 17, 17, 0.05);
+  border-radius: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  background: rgba(15, 23, 42, 0.78);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 18px 38px rgba(2, 6, 23, 0.34);
 }
 
 .action-eyebrow {
@@ -186,9 +191,9 @@ table {
 }
 
 .action-button {
-  border: 1px solid rgba(17, 17, 17, 0.12);
-  background: #ffffff;
-  color: #111111;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgba(56, 189, 248, 0.12);
+  color: #e6f8ff;
   border-radius: 999px;
   padding: 10px 16px;
   cursor: pointer;
@@ -200,13 +205,13 @@ table {
 }
 
 .action-button-danger {
-  border-color: rgba(220, 38, 38, 0.2);
-  background: rgba(220, 38, 38, 0.04);
+  border-color: rgba(248, 113, 113, 0.4);
+  background: rgba(248, 113, 113, 0.12);
 }
 
 .action-button-secondary {
-  border-color: rgba(17, 17, 17, 0.1);
-  background: #f5f5f4;
+  border-color: rgba(148, 163, 184, 0.24);
+  background: rgba(148, 163, 184, 0.1);
 }
 
 .export-button {
@@ -215,15 +220,16 @@ table {
 
 .action-message {
   margin: 0;
-  color: #4b5563;
+  color: #b7c7db;
 }
 
 .nav-link,
 .metric-card,
 .panel {
-  border: 1px solid rgba(17, 17, 17, 0.08);
-  background: #ffffff;
-  box-shadow: 0 12px 32px rgba(17, 17, 17, 0.05);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  background: rgba(15, 23, 42, 0.78);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 18px 38px rgba(2, 6, 23, 0.34);
 }
 
 .nav-link {
@@ -234,8 +240,8 @@ table {
   padding: 0 16px;
   border-radius: 18px;
   text-decoration: none;
-  color: #6b7280;
-  transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+  color: #9fb1ca;
+  transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease, transform 120ms ease;
 }
 
 .nav-link:hover,
@@ -243,6 +249,7 @@ table {
   color: #ffffff;
   border-color: #111111;
   background: #111111;
+  transform: translateY(-1px);
 }
 
 .metric-grid {
@@ -251,20 +258,19 @@ table {
 }
 
 .metric-card {
-  padding: 20px;
-  border-radius: 22px;
+  padding: 18px;
+  border-radius: 18px;
 }
 
 .metric-card span {
   display: block;
-  color: #6b7280;
+  color: #94a3b8;
   font-size: 0.88rem;
   margin-bottom: 10px;
 }
 
 .metric-card strong {
   font-size: 1.9rem;
-  color: #111111;
 }
 
 .app-content {
@@ -330,9 +336,9 @@ table {
 }
 
 .view-toggle {
-  border: 1px solid rgba(17, 17, 17, 0.12);
-  background: #ffffff;
-  color: #111111;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(9, 15, 27, 0.82);
+  color: #dbe7f3;
   border-radius: 999px;
   padding: 10px 16px;
   cursor: pointer;
@@ -341,9 +347,8 @@ table {
 
 .view-toggle:hover,
 .view-toggle-active {
-  border-color: #111111;
-  background: #111111;
-  color: #ffffff;
+  border-color: rgba(56, 189, 248, 0.58);
+  background: rgba(56, 189, 248, 0.14);
   transform: translateY(-1px);
 }
 
@@ -357,8 +362,8 @@ table {
   border-radius: 16px;
   overflow: hidden;
   background:
-    linear-gradient(180deg, rgba(231, 229, 228, 0.8), rgba(245, 245, 244, 0.9)),
-    radial-gradient(circle at center, rgba(17, 17, 17, 0.06), transparent 40%);
+    linear-gradient(180deg, rgba(30, 41, 59, 0.5), rgba(15, 23, 42, 0.8)),
+    radial-gradient(circle at center, rgba(56, 189, 248, 0.08), transparent 40%);
 }
 
 .graph-wrap-tall {
@@ -392,9 +397,9 @@ table {
   transform: translateX(-50%);
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(17, 17, 17, 0.14);
-  color: #111111;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(125, 211, 252, 0.4);
+  color: #d9f4ff;
   font-size: 0.82rem;
   white-space: nowrap;
   z-index: 1;
@@ -490,12 +495,12 @@ table {
   flex: 1 1 320px;
   padding: 14px 16px;
   border-radius: 16px;
-  border: 1px solid rgba(17, 17, 17, 0.08);
-  background: #f7f5f0;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(9, 15, 27, 0.8);
 }
 
 .anomaly-pill span {
-  color: #4b5563;
+  color: #a8bbd3;
 }
 
 .alert-card,
@@ -505,8 +510,8 @@ table {
 .edge-card,
 .registry-card {
   border-radius: 16px;
-  border: 1px solid rgba(17, 17, 17, 0.08);
-  background: #f7f5f0;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(9, 15, 27, 0.8);
 }
 
 .alert-card,
@@ -525,7 +530,7 @@ table {
 }
 
 .registry-status {
-  color: #4b5563;
+  color: #b7c7db;
   font-size: 0.9rem;
 }
 
@@ -541,9 +546,9 @@ table {
   align-items: center;
   padding: 6px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(17, 17, 17, 0.1);
-  background: #ffffff;
-  color: #111111;
+  border: 1px solid rgba(56, 189, 248, 0.24);
+  background: rgba(56, 189, 248, 0.08);
+  color: #dff7ff;
   font-size: 0.82rem;
 }
 
@@ -646,7 +651,7 @@ th {
 }
 
 .hop-meta {
-  color: #6b7280;
+  color: #9eb2cc;
 }
 
 .hop-error,
@@ -659,7 +664,7 @@ th {
 }
 
 .event-info {
-  color: #4b5563;
+  color: #cbd5e1;
 }
 
 @media (max-width: 1100px) {
@@ -684,9 +689,9 @@ th {
     align-items: center;
     justify-content: center;
     width: fit-content;
-    border: 1px solid rgba(17, 17, 17, 0.12);
-    background: #ffffff;
-    color: #111111;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    background: rgba(15, 23, 42, 0.78);
+    color: #f8fafc;
     border-radius: 999px;
     padding: 10px 16px;
   }
