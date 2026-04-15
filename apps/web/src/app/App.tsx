@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
-import { NavLink, Outlet, useOutletContext } from "react-router-dom";
+import { Outlet, useOutletContext } from "react-router-dom";
 import { io } from "socket.io-client";
 import { apiBase, apiClient } from "../api/client";
 import type { BlaxelFunctionRecord, BlaxelToolRecord, DashboardSnapshot, TraceSummary } from "../types";
 import {
   MetricCard,
   buildTopologyElements,
-  formatTime,
   type GraphElementsBundle,
 } from "./dashboard-shared";
+import { PageHeader } from "./PageHeader";
+import { SidebarShell } from "./SidebarShell";
 
 const socket = io(apiBase || undefined, {
   autoConnect: false,
@@ -84,38 +85,25 @@ export function App({
   children = null,
 }: AppShellProps) {
   return (
-    <div className="app-shell">
-      <header className="hero">
-        <div>
-          <p className="eyebrow">Observability & Alignment Dashboard</p>
-          <h1>MCP Atlas</h1>
-          <p className="hero-copy">
-            Real-time view of request paths, MCP dependencies, server health, and risky routing patterns.
-          </p>
-        </div>
-        <div className="hero-meta">
-          <span className="live-dot" />
-          <span>{generatedAt ? `Live snapshot ${formatTime(generatedAt)}` : "Loading live snapshot..."}</span>
-        </div>
-      </header>
+    <SidebarShell generatedAt={generatedAt} overview={overview}>
+      <main className="app-content">
+        <PageHeader
+          eyebrow="Control center"
+          title="Operations overview"
+          description="Track server coverage, latency, traces, and alerts from a calmer workspace shell."
+          actions={actionBar}
+        />
 
-      <nav className="nav-bar" aria-label="Primary navigation">
-        <NavItem to="/" label="Overview" />
-        <NavItem to="/topology" label="Topology" />
-        <NavItem to="/health" label="Health" />
-        <NavItem to="/logs" label="Logs" />
-      </nav>
+        <section className="metric-grid" aria-label="Dashboard summary">
+          <MetricCard label="Active Servers" value={overview ? `${overview.activeServers}/${overview.totalServers}` : "-"} />
+          <MetricCard label="Requests / Min" value={overview ? String(overview.requestsLastMinute) : "-"} />
+          <MetricCard label="Avg Latency" value={overview ? `${overview.averageLatencyMs}ms` : "-"} />
+          <MetricCard label="Anomalies" value={overview ? String(overview.anomalyCount) : "-"} />
+        </section>
 
-      <section className="metric-grid" aria-label="Dashboard summary">
-        <MetricCard label="Active Servers" value={overview ? `${overview.activeServers}/${overview.totalServers}` : "-"} />
-        <MetricCard label="Requests / Min" value={overview ? String(overview.requestsLastMinute) : "-"} />
-        <MetricCard label="Avg Latency" value={overview ? `${overview.averageLatencyMs}ms` : "-"} />
-        <MetricCard label="Anomalies" value={overview ? String(overview.anomalyCount) : "-"} />
-      </section>
-
-      {actionBar}
-      <main>{children}</main>
-    </div>
+        {children}
+      </main>
+    </SidebarShell>
   );
 }
 
@@ -271,13 +259,4 @@ export function DashboardApp() {
     </App>
   );
 }
-
-function NavItem({ to, label }: { to: string; label: string }) {
-  return (
-    <NavLink to={to} end={to === "/"} className={({ isActive }) => `nav-link ${isActive ? "nav-link-active" : ""}`}>
-      {label}
-    </NavLink>
-  );
-}
-
 export default DashboardApp;
