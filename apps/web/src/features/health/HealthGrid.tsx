@@ -4,7 +4,7 @@ import { formatTime, relativeTime } from "../shared/dashboard-formatters";
 
 function LatencyChart({ timeseries }: { timeseries: DashboardSnapshot["timeseries"] }) {
   return (
-    <div className="chart-wrap">
+    <div className="chart-wrap health-chart-surface">
       <ResponsiveContainer width="100%" height={260}>
         <LineChart data={timeseries}>
           <CartesianGrid stroke="rgba(148, 163, 184, 0.18)" vertical={false} />
@@ -27,8 +27,8 @@ function LatencyChart({ timeseries }: { timeseries: DashboardSnapshot["timeserie
 
 export function HealthGrid({ snapshot }: { snapshot: DashboardSnapshot }) {
   return (
-    <section className="dashboard-grid">
-      <article className="panel panel-wide">
+    <section className="dashboard-grid health-grid">
+      <article className="panel panel-wide health-table-panel">
         <div className="panel-header">
           <div>
             <h2>Server Health</h2>
@@ -67,7 +67,7 @@ export function HealthGrid({ snapshot }: { snapshot: DashboardSnapshot }) {
         </div>
       </article>
 
-      <article className="panel">
+      <article className="panel health-chart-panel">
         <div className="panel-header">
           <div>
             <h2>Latency</h2>
@@ -77,7 +77,7 @@ export function HealthGrid({ snapshot }: { snapshot: DashboardSnapshot }) {
         <LatencyChart timeseries={snapshot.timeseries} />
       </article>
 
-      <article className="panel">
+      <article className="panel health-alerts-panel">
         <div className="panel-header">
           <div>
             <h2>Failures</h2>
