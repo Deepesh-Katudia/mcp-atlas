@@ -1,31 +1,9 @@
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { TraceSummary } from "@mcp-atlas/contracts";
 import { LogsWorkspace } from "./LogsWorkspace";
-
-vi.mock("./TraceList", () => ({
-  TraceList: ({
-    traces,
-    selectedTraceId,
-    onSelectTrace,
-  }: {
-    traces: TraceSummary[];
-    selectedTraceId: string | null;
-    onSelectTrace: (traceId: string) => void;
-  }) => (
-    <div data-testid="trace-list">
-      <div>{traces.length} traces</div>
-      <button type="button" onClick={() => onSelectTrace(traces[1]?.traceId ?? traces[0]?.traceId ?? "")}>
-        choose trace
-      </button>
-      <div>Selected: {selectedTraceId ?? "none"}</div>
-    </div>
-  ),
-}));
-
-vi.mock("./TraceDetail", () => ({
-  TraceDetail: ({ trace }: { trace: TraceSummary }) => <div data-testid="trace-detail">Detail for {trace.requestId}</div>,
-}));
+import { exportTraceCsv } from "./export-trace-csv";
 
 vi.mock("./export-trace-csv", () => ({
   exportTraceCsv: vi.fn(),
@@ -76,12 +54,23 @@ const traces: TraceSummary[] = [
   },
 ];
 
+function LogsWorkspaceHarness() {
+  const [selectedTraceId, setSelectedTraceId] = useState<string | null>(traces[0].traceId);
+  const selectedTrace = traces.find((trace) => trace.traceId === selectedTraceId) ?? null;
+
+  return (
+    <LogsWorkspace
+      traces={traces}
+      selectedTraceId={selectedTraceId}
+      selectedTrace={selectedTrace}
+      onSelectTrace={setSelectedTraceId}
+    />
+  );
+}
+
 describe("LogsWorkspace", () => {
-  it("renders a two-pane logs workspace with the export action in the detail header and a dark detail surface hook", () => {
-    const onSelectTrace = vi.fn();
-    const { container } = render(
-      <LogsWorkspace traces={traces} selectedTraceId="trace-001" selectedTrace={traces[0]} onSelectTrace={onSelectTrace} />,
-    );
+  it("renders the real two-pane logs flow with button-based trace selection, detail updates, and export in the detail header", () => {
+    const { container } = render(<LogsWorkspaceHarness />);
 
     const workspace = container.querySelector(".logs-workspace.dashboard-grid");
     expect(workspace).not.toBeNull();
@@ -90,11 +79,30 @@ describe("LogsWorkspace", () => {
 
     expect(screen.getByRole("heading", { name: /request logs/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /trace detail/i })).toBeInTheDocument();
-    expect(screen.getByTestId("trace-list")).toBeInTheDocument();
-    expect(screen.getByTestId("trace-detail")).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: /trace list/i })).toBeInTheDocument();
+
+    const traceList = screen.getByRole("list", { name: /trace list/i });
+    const firstTraceButton = within(traceList).getByRole("button", { name: /req-001/i });
+    const secondTraceButton = within(traceList).getByRole("button", { name: /req-002/i });
+    expect(firstTraceButton).toBeInTheDocument();
+    expect(secondTraceButton).toBeInTheDocument();
+    expect(firstTraceButton).not.toHaveAttribute("role");
+    expect(secondTraceButton).not.toHaveAttribute("role");
+
+    expect(screen.getByText("Trace trace-001")).toBeInTheDocument();
+    expect(screen.getByText("REQUEST_COMPLETED")).toBeInTheDocument();
 
     const detailHeader = container.querySelector(".logs-workspace-detail .panel-header");
     expect(detailHeader).not.toBeNull();
-    expect(within(detailHeader as HTMLElement).getByRole("button", { name: /export excel csv/i })).toBeInTheDocument();
+    const exportButton = within(detailHeader as HTMLElement).getByRole("button", { name: /export excel csv/i });
+    expect(exportButton).toBeInTheDocument();
+
+    fireEvent.click(secondTraceButton);
+
+    expect(screen.getByText("Trace trace-002")).toBeInTheDocument();
+    expect(screen.getByText("REQUEST_FAILED")).toBeInTheDocument();
+
+    fireEvent.click(exportButton);
+    expect(exportTraceCsv).toHaveBeenCalledWith(traces[1]);
   });
 });
