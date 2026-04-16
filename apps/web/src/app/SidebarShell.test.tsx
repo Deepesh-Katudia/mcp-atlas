@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { SidebarShell } from "./SidebarShell";
 
@@ -13,11 +13,15 @@ describe("SidebarShell", () => {
       </MemoryRouter>,
     );
 
+    const sidebar = screen.getByRole("complementary", { name: /primary navigation/i });
+    const nav = within(sidebar).getByRole("navigation");
+
     expect(screen.getByText("MCP Atlas")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /overview/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /topology/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /logs/i })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("link", { name: /health/i })).toBeInTheDocument();
+    expect(sidebar).toHaveAttribute("id", "primary-sidebar");
+    expect(within(nav).getByRole("link", { name: /overview/i })).toBeInTheDocument();
+    expect(within(nav).getByRole("link", { name: /topology/i })).toBeInTheDocument();
+    expect(within(nav).getByRole("link", { name: /logs/i })).toHaveAttribute("aria-current", "page");
+    expect(within(nav).getByRole("link", { name: /health/i })).toBeInTheDocument();
     expect(screen.getByText(/live snapshot/i)).toBeInTheDocument();
     expect(screen.getByText("child content")).toBeInTheDocument();
   });
@@ -49,11 +53,15 @@ describe("SidebarShell", () => {
     );
 
     const toggle = screen.getByRole("button", { name: /open navigation/i });
+    const sidebar = screen.getByRole("complementary", { name: /primary navigation/i });
+
+    expect(toggle).toHaveAttribute("aria-controls", "primary-sidebar");
+    expect(sidebar).toHaveAttribute("id", "primary-sidebar");
     expect(toggle).toHaveAttribute("aria-expanded", "false");
 
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByLabelText(/primary navigation/i)).toHaveClass("sidebar-shell-open");
+    expect(sidebar).toHaveClass("sidebar-shell-open");
 
     fireEvent.click(screen.getByRole("link", { name: /health/i }));
 

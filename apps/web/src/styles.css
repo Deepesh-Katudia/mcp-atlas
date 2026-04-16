@@ -1041,12 +1041,74 @@ th {
   .health-alerts-panel {
     grid-column: span 12;
   }
+
+  .logs-workspace-list,
+  .logs-workspace-detail {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .app-shell {
+    gap: 20px;
+    padding: 20px;
+  }
+
+  .sidebar-shell {
+    gap: 20px;
+    padding: 20px;
+  }
+
+  .page-header {
+    flex-direction: column;
+    padding: 22px;
+  }
+
+  .page-header-actions {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .page-header-actions > * {
+    width: 100%;
+  }
+
+  .action-bar,
+  .topology-support-panel {
+    padding: 20px;
+  }
+
+  .summary-stat-stack {
+    text-align: left;
+  }
+
+  .summary-trace-meta,
+  .registry-top,
+  .registry-actions,
+  .logs-workspace-detail .panel-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .logs-workspace-export {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .topology-graph-surface {
+    padding: 12px;
+  }
+
+  .graph-wrap-tall {
+    height: 520px;
+  }
 }
 
 @media (max-width: 720px) {
   .app-shell {
     grid-template-columns: 1fr;
-    padding: 20px;
+    gap: 16px;
+    padding: 16px;
   }
 
   .sidebar-toggle {
@@ -1064,6 +1126,8 @@ th {
   .sidebar-shell {
     display: none;
     position: static;
+    gap: 18px;
+    padding: 18px;
   }
 
   .sidebar-shell-open {
@@ -1073,6 +1137,10 @@ th {
   .page-header,
   .panel-header-stack {
     flex-direction: column;
+  }
+
+  .page-header {
+    padding: 20px;
   }
 
   .logs-workspace-detail .panel-header,
@@ -1135,5 +1203,9 @@ th {
     aspect-ratio: 1 / 1;
     right: 4%;
     top: 28px;
+  }
+
+  .graph-wrap-tall {
+    height: 440px;
   }
 }
