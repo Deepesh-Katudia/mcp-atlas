@@ -1213,12 +1213,6 @@ th {
 .resizable-panel {
   position: relative;
   min-width: 0;
-  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
-}
-
-.resizable-panel:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.08);
 }
 
 .resize-handle {
