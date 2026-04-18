@@ -33,10 +33,24 @@ export function MasonryWorkspace({
 }) {
   const isDesktop = useDesktopResize();
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const resizedItemIdsRef = useRef(new Set<string>());
   const [containerWidth, setContainerWidth] = useState(DEFAULT_WORKSPACE_WIDTH);
   const [sizes, setSizes] = useState<Record<string, Size>>(() =>
     Object.fromEntries(items.map((item) => [item.id, item.defaultSize])),
   );
+
+  useEffect(() => {
+    setSizes((current) => {
+      const nextSizes = Object.fromEntries(
+        items.map((item) => [
+          item.id,
+          resizedItemIdsRef.current.has(item.id) ? current[item.id] ?? item.defaultSize : item.defaultSize,
+        ]),
+      );
+
+      return haveSameSizes(current, nextSizes) ? current : nextSizes;
+    });
+  }, [items]);
 
   useEffect(() => {
     if (!isDesktop || !containerRef.current) {
@@ -137,7 +151,12 @@ export function MasonryWorkspace({
               defaultSize={size}
               minSize={item.minSize}
               maxSize={item.maxSize}
+              onResize={(nextSize) => {
+                resizedItemIdsRef.current.add(item.id);
+                setSizes((current) => ({ ...current, [item.id]: nextSize }));
+              }}
               onResizeEnd={(nextSize) => {
+                resizedItemIdsRef.current.add(item.id);
                 setSizes((current) => ({ ...current, [item.id]: nextSize }));
                 item.onResizeEnd?.(nextSize);
               }}
@@ -149,4 +168,15 @@ export function MasonryWorkspace({
       })}
     </div>
   );
+}
+
+function haveSameSizes(left: Record<string, Size>, right: Record<string, Size>) {
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+
+  if (leftKeys.length !== rightKeys.length) {
+    return false;
+  }
+
+  return rightKeys.every((key) => left[key]?.width === right[key].width && left[key]?.height === right[key].height);
 }
