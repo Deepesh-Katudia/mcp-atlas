@@ -55,4 +55,15 @@ describe("App", () => {
     expect(styles).toContain(".resizable-panel:hover");
     expect(styles).toContain(".resize-handle-corner");
   });
+
+  it("keeps masonry workspace styles and thin native-reset resize affordances", () => {
+    const styles = readFileSync("src/styles.css", "utf8");
+
+    expect(styles).toContain(".masonry-workspace");
+    expect(styles).toContain(".masonry-card");
+    expect(styles).toMatch(/\.resize-handle\s*\{[\s\S]*appearance:\s*none;/);
+    expect(styles).toMatch(/\.resize-handle-east::after\s*\{[\s\S]*width:\s*2px;/);
+    expect(styles).toMatch(/\.resize-handle-south::after\s*\{[\s\S]*height:\s*2px;/);
+    expect(styles).toMatch(/@media \(max-width: 1023px\)[\s\S]*\.resize-handle\s*\{[\s\S]*display:\s*none;/);
+  });
 });

@@ -1266,11 +1266,14 @@ th {
 }
 
 .resize-handle {
+  appearance: none;
+  -webkit-appearance: none;
   position: absolute;
   border: 0;
   background: transparent;
   padding: 0;
   opacity: 0;
+  touch-action: none;
   transition: opacity 160ms ease;
 }
 
