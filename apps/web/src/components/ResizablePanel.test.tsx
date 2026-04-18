@@ -97,6 +97,22 @@ describe("ResizablePanel", () => {
     expect(onResizeEnd).not.toHaveBeenCalled();
   });
 
+  it("cancels an active drag when the window blurs", () => {
+    const onResizeEnd = vi.fn();
+    renderPanel({ onResizeEnd });
+
+    const panel = screen.getByTestId("resizable-panel-summary");
+    const handle = screen.getByLabelText("Resize summary panel width and height");
+
+    fireEvent.mouseDown(handle, { clientX: 520, clientY: 320 });
+    fireEvent(window, new Event("blur"));
+    fireEvent.mouseMove(window, { clientX: 620, clientY: 410 });
+    fireEvent.mouseUp(window, { clientX: 620, clientY: 410 });
+
+    expect(onResizeEnd).not.toHaveBeenCalled();
+    expect(panel).toHaveStyle({ width: "520px", height: "320px" });
+  });
+
   it("resizes width only from the east handle", () => {
     renderPanel();
 
