@@ -40,12 +40,7 @@ export function packMasonryItems(items: MasonryItemSize[], options: PackOptions)
 
   const height = placed.reduce((maxHeight, item) => Math.max(maxHeight, item.y + item.height), 0);
 
-  Object.defineProperty(placed, "height", {
-    enumerable: false,
-    value: height,
-  });
-
-  return placed as PackedMasonryItems;
+  return Object.assign(placed, { height });
 }
 
 function getCandidateXPositions(placed: PackedMasonryItem[], item: MasonryItemSize, options: PackOptions) {

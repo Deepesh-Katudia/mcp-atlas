@@ -47,4 +47,10 @@ describe("packMasonryItems", () => {
 
     expect(packed.height).toBe(300);
   });
+
+  it("exposes height as an enumerable layout property", () => {
+    const packed = packMasonryItems([{ id: "a", width: 420, height: 240 }], { width: 920, gutter: 20 });
+
+    expect(Object.keys(packed)).toContain("height");
+  });
 });
