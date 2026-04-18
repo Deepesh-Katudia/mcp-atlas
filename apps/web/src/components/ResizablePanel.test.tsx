@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { ResizablePanel } from "./ResizablePanel";
@@ -14,23 +15,28 @@ function mockMatchMedia(matches: boolean) {
   });
 }
 
+function renderPanel(props: Partial<ComponentProps<typeof ResizablePanel>> = {}) {
+  return render(
+    <ResizablePanel
+      panelId="summary"
+      label="summary panel"
+      defaultSize={{ width: 520, height: 320 }}
+      minSize={{ width: 360, height: 240 }}
+      maxSize={{ width: 980, height: 640 }}
+      {...props}
+    >
+      <div>Summary body</div>
+    </ResizablePanel>,
+  );
+}
+
 describe("ResizablePanel", () => {
   beforeEach(() => {
     mockMatchMedia(true);
   });
 
   it("renders resize handles only on desktop", () => {
-    render(
-      <ResizablePanel
-        panelId="summary"
-        label="summary panel"
-        defaultSize={{ width: 520, height: 320 }}
-        minSize={{ width: 360, height: 240 }}
-        maxSize={{ width: 980, height: 640 }}
-      >
-        <div>Summary body</div>
-      </ResizablePanel>,
-    );
+    renderPanel();
 
     expect(screen.getByTestId("resizable-panel-summary")).toBeInTheDocument();
     expect(screen.getByLabelText("Resize summary panel width")).toBeInTheDocument();
@@ -44,17 +50,7 @@ describe("ResizablePanel", () => {
       value: undefined,
     });
 
-    render(
-      <ResizablePanel
-        panelId="summary"
-        label="summary panel"
-        defaultSize={{ width: 520, height: 320 }}
-        minSize={{ width: 360, height: 240 }}
-        maxSize={{ width: 980, height: 640 }}
-      >
-        <div>Summary body</div>
-      </ResizablePanel>,
-    );
+    renderPanel();
 
     expect(screen.getByTestId("resizable-panel-summary")).toBeInTheDocument();
     expect(screen.queryByLabelText("Resize summary panel width")).not.toBeInTheDocument();
@@ -63,17 +59,7 @@ describe("ResizablePanel", () => {
   it("does not render resize handles outside desktop breakpoints", () => {
     mockMatchMedia(false);
 
-    render(
-      <ResizablePanel
-        panelId="summary"
-        label="summary panel"
-        defaultSize={{ width: 520, height: 320 }}
-        minSize={{ width: 360, height: 240 }}
-        maxSize={{ width: 980, height: 640 }}
-      >
-        <div>Summary body</div>
-      </ResizablePanel>,
-    );
+    renderPanel();
 
     expect(screen.queryByLabelText("Resize summary panel width")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Resize summary panel height")).not.toBeInTheDocument();
@@ -82,23 +68,11 @@ describe("ResizablePanel", () => {
 
   it("updates width and height while dragging the corner handle", () => {
     const onResizeEnd = vi.fn();
-
-    render(
-      <ResizablePanel
-        panelId="summary"
-        label="summary panel"
-        defaultSize={{ width: 520, height: 320 }}
-        minSize={{ width: 360, height: 240 }}
-        maxSize={{ width: 980, height: 640 }}
-        onResizeEnd={onResizeEnd}
-      >
-        <div>Summary body</div>
-      </ResizablePanel>,
-    );
+    renderPanel({ onResizeEnd });
 
     const panel = screen.getByTestId("resizable-panel-summary");
     const handle = screen.getByLabelText("Resize summary panel width and height");
-    const dragTarget = document.body;
+    const dragTarget = window;
 
     fireEvent.mouseDown(handle, { clientX: 520, clientY: 320 });
     fireEvent.mouseMove(dragTarget, { clientX: 620, clientY: 410 });
@@ -110,21 +84,10 @@ describe("ResizablePanel", () => {
 
   it("cleans up active drag listeners when the panel unmounts mid-drag", () => {
     const onResizeEnd = vi.fn();
-    const { unmount } = render(
-      <ResizablePanel
-        panelId="summary"
-        label="summary panel"
-        defaultSize={{ width: 520, height: 320 }}
-        minSize={{ width: 360, height: 240 }}
-        maxSize={{ width: 980, height: 640 }}
-        onResizeEnd={onResizeEnd}
-      >
-        <div>Summary body</div>
-      </ResizablePanel>,
-    );
+    const { unmount } = renderPanel({ onResizeEnd });
 
     const handle = screen.getByLabelText("Resize summary panel width and height");
-    const dragTarget = document.body;
+    const dragTarget = window;
 
     fireEvent.mouseDown(handle, { clientX: 520, clientY: 320 });
     unmount();
@@ -132,5 +95,48 @@ describe("ResizablePanel", () => {
     fireEvent.mouseUp(dragTarget, { clientX: 620, clientY: 410 });
 
     expect(onResizeEnd).not.toHaveBeenCalled();
+  });
+
+  it("resizes width only from the east handle", () => {
+    renderPanel();
+
+    const panel = screen.getByTestId("resizable-panel-summary");
+    const handle = screen.getByLabelText("Resize summary panel width");
+
+    fireEvent.mouseDown(handle, { clientX: 520, clientY: 320 });
+    fireEvent.mouseMove(window, { clientX: 700, clientY: 480 });
+    fireEvent.mouseUp(window, { clientX: 700, clientY: 480 });
+
+    expect(panel).toHaveStyle({ width: "700px", height: "320px" });
+  });
+
+  it("resizes height only from the south handle", () => {
+    renderPanel();
+
+    const panel = screen.getByTestId("resizable-panel-summary");
+    const handle = screen.getByLabelText("Resize summary panel height");
+
+    fireEvent.mouseDown(handle, { clientX: 520, clientY: 320 });
+    fireEvent.mouseMove(window, { clientX: 780, clientY: 500 });
+    fireEvent.mouseUp(window, { clientX: 780, clientY: 500 });
+
+    expect(panel).toHaveStyle({ width: "520px", height: "500px" });
+  });
+
+  it("clamps the resized dimensions to the configured bounds", () => {
+    renderPanel();
+
+    const panel = screen.getByTestId("resizable-panel-summary");
+    const handle = screen.getByLabelText("Resize summary panel width and height");
+
+    fireEvent.mouseDown(handle, { clientX: 520, clientY: 320 });
+    fireEvent.mouseMove(window, { clientX: 1200, clientY: 900 });
+    fireEvent.mouseUp(window, { clientX: 1200, clientY: 900 });
+    expect(panel).toHaveStyle({ width: "980px", height: "640px" });
+
+    fireEvent.mouseDown(handle, { clientX: 980, clientY: 640 });
+    fireEvent.mouseMove(window, { clientX: 100, clientY: 100 });
+    fireEvent.mouseUp(window, { clientX: 100, clientY: 100 });
+    expect(panel).toHaveStyle({ width: "360px", height: "240px" });
   });
 });

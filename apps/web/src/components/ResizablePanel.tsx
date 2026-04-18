@@ -64,7 +64,7 @@ export function ResizablePanel({
       setDragging(mode);
       cleanupRef.current?.();
       const ownerDocument = event.currentTarget.ownerDocument;
-      const dragTarget = ownerDocument.body;
+      const dragTarget = ownerDocument.defaultView ?? ownerDocument;
       const getNextSize = (clientX: number, clientY: number) => ({
         width:
           mode === "height"
