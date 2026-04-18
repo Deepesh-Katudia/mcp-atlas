@@ -38,7 +38,9 @@ describe("ResizablePanel", () => {
     expect(screen.getByLabelText("Resize summary panel width and height")).toBeInTheDocument();
   });
 
-  it("updates width and height while dragging the corner handle", () => {
+  it("does not render resize handles outside desktop breakpoints", () => {
+    mockMatchMedia(false);
+
     render(
       <ResizablePanel
         panelId="summary"
@@ -46,6 +48,27 @@ describe("ResizablePanel", () => {
         defaultSize={{ width: 520, height: 320 }}
         minSize={{ width: 360, height: 240 }}
         maxSize={{ width: 980, height: 640 }}
+      >
+        <div>Summary body</div>
+      </ResizablePanel>,
+    );
+
+    expect(screen.queryByLabelText("Resize summary panel width")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Resize summary panel height")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Resize summary panel width and height")).not.toBeInTheDocument();
+  });
+
+  it("updates width and height while dragging the corner handle", () => {
+    const onResizeEnd = vi.fn();
+
+    render(
+      <ResizablePanel
+        panelId="summary"
+        label="summary panel"
+        defaultSize={{ width: 520, height: 320 }}
+        minSize={{ width: 360, height: 240 }}
+        maxSize={{ width: 980, height: 640 }}
+        onResizeEnd={onResizeEnd}
       >
         <div>Summary body</div>
       </ResizablePanel>,
@@ -59,6 +82,7 @@ describe("ResizablePanel", () => {
     fireEvent.mouseMove(dragTarget, { clientX: 620, clientY: 410 });
     fireEvent.mouseUp(dragTarget, { clientX: 620, clientY: 410 });
 
+    expect(onResizeEnd).toHaveBeenCalledTimes(1);
     expect(panel).toHaveStyle({ width: "620px", height: "410px" });
   });
 });
