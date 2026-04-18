@@ -113,6 +113,19 @@ describe("ResizablePanel", () => {
     expect(panel).toHaveStyle({ width: "520px", height: "320px" });
   });
 
+  it("removes the blur listener after a completed drag", () => {
+    const removeListenerSpy = vi.spyOn(window, "removeEventListener");
+    renderPanel();
+
+    const handle = screen.getByLabelText("Resize summary panel width and height");
+
+    fireEvent.mouseDown(handle, { clientX: 520, clientY: 320 });
+    fireEvent.mouseMove(window, { clientX: 620, clientY: 410 });
+    fireEvent.mouseUp(window, { clientX: 620, clientY: 410 });
+
+    expect(removeListenerSpy).toHaveBeenCalledWith("blur", expect.any(Function));
+  });
+
   it("resizes width only from the east handle", () => {
     renderPanel();
 

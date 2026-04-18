@@ -87,9 +87,14 @@ export function ResizablePanel({
         setSize(nextSize);
       };
 
-      const removeListeners = () => {
+      const removeDragListeners = () => {
         dragTarget.removeEventListener("mousemove", onMove);
         dragTarget.removeEventListener("mouseup", onUp);
+      };
+
+      const removeListeners = () => {
+        window.removeEventListener("blur", onCancel);
+        removeDragListeners();
         cleanupRef.current = null;
       };
 
@@ -111,15 +116,10 @@ export function ResizablePanel({
         removeListeners();
       };
 
-      cleanupRef.current = removeListeners;
       dragTarget.addEventListener("mousemove", onMove);
       dragTarget.addEventListener("mouseup", onUp);
       window.addEventListener("blur", onCancel, { once: true });
-      const previousCleanup = cleanupRef.current;
-      cleanupRef.current = () => {
-        window.removeEventListener("blur", onCancel);
-        previousCleanup?.();
-      };
+      cleanupRef.current = removeListeners;
     };
 
   return (
