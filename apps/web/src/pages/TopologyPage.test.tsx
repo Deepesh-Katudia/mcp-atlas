@@ -72,6 +72,52 @@ describe("TopologyPage", () => {
         topologyElements: [{ data: { id: "clustered-node" } }],
         clustered: true,
         tall: true,
+        resizeSignal: 0,
+      }),
+    );
+  });
+
+  it("wraps the topology graph and support cards in resizable panels while preserving cluster toggling", () => {
+    mockTopologyGraph.mockClear();
+    mockUseDashboardAppContext.mockReturnValue({
+      snapshot: {
+        dependencies: [
+          {
+            source: "Gateway MCP",
+            target: "Search MCP",
+            volume: 84,
+            averageLatencyMs: 142,
+          },
+        ],
+        alerts: [
+          {
+            id: "alert-1",
+            timestamp: 1713124800000,
+            severity: "medium",
+            title: "Search MCP lag",
+            detail: "Latency variance climbed across the retrieval route.",
+          },
+        ],
+      },
+      graphElements: {
+        flat: [{ data: { id: "flat-node" } }],
+        clustered: [{ data: { id: "clustered-node" } }],
+      },
+    });
+
+    render(<TopologyPage />);
+
+    expect(screen.getByTestId("resizable-panel-topology-graph")).toBeInTheDocument();
+    expect(screen.getByTestId("resizable-panel-topology-edges")).toBeInTheDocument();
+    expect(screen.getByTestId("resizable-panel-topology-insights")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /clusters/i }));
+
+    expect(mockTopologyGraph).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        topologyElements: [{ data: { id: "clustered-node" } }],
+        clustered: true,
+        resizeSignal: expect.any(Number),
       }),
     );
   });

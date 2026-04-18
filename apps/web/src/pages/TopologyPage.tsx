@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useDashboardAppContext } from "../app/App";
 import { PageHeader } from "../app/PageHeader";
+import { ResizablePanel } from "../components/ResizablePanel";
 import { AlertList } from "../features/overview/OverviewCards";
 import { TopologyGraph } from "../features/topology/TopologyGraph";
 
 export function TopologyPage() {
   const { snapshot, graphElements } = useDashboardAppContext();
   const [showClusters, setShowClusters] = useState(false);
+  const [graphResizeSignal, setGraphResizeSignal] = useState(0);
 
   if (!snapshot) {
     return (
@@ -36,7 +38,15 @@ export function TopologyPage() {
       />
 
       <section className="dashboard-grid topology-layout">
-        <article className="panel panel-wide summary-panel-dark topology-graph-panel">
+        <ResizablePanel
+          as="article"
+          panelId="topology-graph"
+          label="topology graph panel"
+          className="panel panel-wide summary-panel-dark topology-graph-panel"
+          minSize={{ width: 620, height: 460 }}
+          maxSize={{ width: 1800, height: 1200 }}
+          onResizeEnd={() => setGraphResizeSignal((value) => value + 1)}
+        >
           <div className="panel-header">
             <div>
               <h2>Network graph</h2>
@@ -51,13 +61,21 @@ export function TopologyPage() {
               topologyElements={showClusters ? graphElements.clustered : graphElements.flat}
               tall
               clustered={showClusters}
+              resizeSignal={graphResizeSignal}
               className="topology-graph-frame"
             />
           </div>
-        </article>
+        </ResizablePanel>
 
         <div className="topology-support-column">
-          <article className="panel topology-support-panel">
+          <ResizablePanel
+            as="article"
+            panelId="topology-edges"
+            label="dependency edges"
+            className="panel topology-support-panel"
+            minSize={{ width: 320, height: 260 }}
+            maxSize={{ width: 1200, height: 900 }}
+          >
             <div className="panel-header">
               <div>
                 <h2>Dependency Edges</h2>
@@ -77,9 +95,16 @@ export function TopologyPage() {
                 </div>
               ))}
             </div>
-          </article>
+          </ResizablePanel>
 
-          <article className="panel topology-support-panel">
+          <ResizablePanel
+            as="article"
+            panelId="topology-insights"
+            label="alignment insights"
+            className="panel topology-support-panel"
+            minSize={{ width: 320, height: 260 }}
+            maxSize={{ width: 1200, height: 900 }}
+          >
             <div className="panel-header">
               <div>
                 <h2>Alignment Insights</h2>
@@ -87,7 +112,7 @@ export function TopologyPage() {
               </div>
             </div>
             <AlertList alerts={snapshot.alerts} />
-          </article>
+          </ResizablePanel>
         </div>
       </section>
     </>
