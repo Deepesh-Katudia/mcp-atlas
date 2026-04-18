@@ -46,4 +46,13 @@ describe("App", () => {
     expect(styles).toMatch(/@media \(max-width: 900px\)[\s\S]*\.page-header-actions\s*\{[\s\S]*min-width:\s*0;[\s\S]*width:\s*100%;/);
     expect(styles).toMatch(/@media \(max-width: 1100px\)[\s\S]*\.logs-workspace-list,\s*\.logs-workspace-detail[\s\S]*min-height:\s*auto;/);
   });
+
+  it("keeps analysis surfaces on lighter charcoal tokens and exposes hover-capable resizable panels", () => {
+    const styles = readFileSync("src/styles.css", "utf8");
+
+    expect(styles).toContain(".summary-panel-dark");
+    expect(styles).toContain("background: #1f2937");
+    expect(styles).toContain(".resizable-panel:hover");
+    expect(styles).toContain(".resize-handle-corner");
+  });
 });
