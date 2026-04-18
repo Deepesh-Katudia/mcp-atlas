@@ -1,7 +1,6 @@
 import { useDashboardAppContext } from "../app/App";
-import { TraceDetail } from "../features/logs/TraceDetail";
-import { TraceList } from "../features/logs/TraceList";
-import { exportTraceCsv } from "../features/logs/export-trace-csv";
+import { PageHeader } from "../app/PageHeader";
+import { LogsWorkspace } from "../features/logs/LogsWorkspace";
 
 export function LogsPage() {
   const { snapshot, selectedTrace, selectedTraceId, setSelectedTraceId } = useDashboardAppContext();
@@ -17,31 +16,18 @@ export function LogsPage() {
   }
 
   return (
-    <section className="dashboard-grid">
-      <article className="panel">
-        <div className="panel-header">
-          <div>
-            <h2>Request Logs</h2>
-            <p>Recent traces reconstructed from MCP telemetry events.</p>
-          </div>
-        </div>
-        <TraceList traces={snapshot.traces} selectedTraceId={selectedTraceId} onSelectTrace={setSelectedTraceId} />
-      </article>
-
-      <article className="panel panel-wide">
-        <div className="panel-header">
-          <div>
-            <h2>Trace Detail</h2>
-            <p>Hop-by-hop lifecycle of the selected request.</p>
-          </div>
-          {selectedTrace ? (
-            <button type="button" className="action-button export-button" onClick={() => exportTraceCsv(selectedTrace)}>
-              Export Excel CSV
-            </button>
-          ) : null}
-        </div>
-        {selectedTrace ? <TraceDetail trace={selectedTrace} /> : <p className="empty">Select a trace to inspect it.</p>}
-      </article>
-    </section>
+    <>
+      <PageHeader
+        eyebrow="Request tracing"
+        title="Logs workspace"
+        description="Review request paths in a quieter split view, with the trace list on paper and the selected run on a dark inspection surface."
+      />
+      <LogsWorkspace
+        traces={snapshot.traces}
+        selectedTrace={selectedTrace}
+        selectedTraceId={selectedTraceId}
+        onSelectTrace={setSelectedTraceId}
+      />
+    </>
   );
 }

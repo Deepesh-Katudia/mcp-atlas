@@ -1,4 +1,5 @@
 import { useDashboardAppContext } from "../app/App";
+import { PageHeader } from "../app/PageHeader";
 import { HealthGrid } from "../features/health/HealthGrid";
 
 export function HealthPage() {
@@ -14,5 +15,14 @@ export function HealthPage() {
     );
   }
 
-  return <HealthGrid snapshot={snapshot} />;
+  return (
+    <>
+      <PageHeader
+        eyebrow="Service posture"
+        title="Health workspace"
+        description="Scan server status in a lighter operations shell, then drop into darker inset views where trends need extra contrast."
+      />
+      <HealthGrid snapshot={snapshot} />
+    </>
+  );
 }

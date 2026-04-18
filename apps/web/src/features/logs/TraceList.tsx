@@ -11,24 +11,28 @@ export function TraceList({
   onSelectTrace: (traceId: string) => void;
 }) {
   return (
-    <div className="trace-list">
+    <div className="trace-list" role="list" aria-label="Trace list">
       {traces.map((trace) => (
-        <button
-          key={trace.traceId}
-          className={`trace-card ${trace.traceId === selectedTraceId ? "trace-card-active" : ""}`}
-          onClick={() => onSelectTrace(trace.traceId)}
-          type="button"
-        >
-          <div className="trace-top">
-            <strong>{trace.requestId}</strong>
-            <span className={`status-pill status-${trace.status}`}>{trace.status}</span>
-          </div>
-          <p>{trace.path.join(" -> ")}</p>
-          <div className="trace-meta">
-            <span>{trace.totalLatencyMs}ms total</span>
-            <span>{formatTime(trace.updatedAt)}</span>
-          </div>
-        </button>
+        <div key={trace.traceId} role="listitem">
+          <button
+            className={`trace-card ${trace.traceId === selectedTraceId ? "trace-card-active" : ""}`}
+            onClick={() => onSelectTrace(trace.traceId)}
+            type="button"
+          >
+            <div className="trace-top">
+              <div className="trace-title-block">
+                <strong>{trace.requestId}</strong>
+                <span className="trace-origin">{trace.origin}</span>
+              </div>
+              <span className={`status-pill status-${trace.status}`}>{trace.status}</span>
+            </div>
+            <p className="trace-path">{trace.path.join(" -> ")}</p>
+            <div className="trace-meta">
+              <span>{trace.totalLatencyMs}ms total</span>
+              <span>{formatTime(trace.updatedAt)}</span>
+            </div>
+          </button>
+        </div>
       ))}
     </div>
   );

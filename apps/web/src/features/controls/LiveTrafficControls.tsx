@@ -14,10 +14,11 @@ export function LiveTrafficControls({
   onRunBlaxelTask: () => void;
 }) {
   return (
-    <section className="action-bar">
-      <div>
+    <section className="action-bar" aria-label="Live traffic controls">
+      <div className="action-copy">
         <p className="eyebrow action-eyebrow">Live Traffic Controls</p>
         <strong>Trigger real local or Blaxel sandbox MCP traffic through the Atlas proxy.</strong>
+        <p className="action-subcopy">Use these controls to generate fresh activity before drilling into topology, logs, and health.</p>
       </div>
       <div className="action-buttons">
         <button type="button" className="action-button" onClick={onRunAgentTask} disabled={pending}>
@@ -33,7 +34,9 @@ export function LiveTrafficControls({
           Trigger Failure
         </button>
       </div>
-      <p className="action-message">{pending ? "Running live request..." : message ?? "Ready for live traffic."}</p>
+      <p className="action-message" aria-live="polite">
+        {pending ? "Running live request..." : message ?? "Ready for live traffic."}
+      </p>
     </section>
   );
 }

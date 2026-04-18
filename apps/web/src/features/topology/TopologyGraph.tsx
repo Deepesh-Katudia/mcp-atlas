@@ -6,12 +6,17 @@ export function TopologyGraph({
   topologyElements,
   tall = false,
   clustered = false,
+  resizeSignal = 0,
+  className = "",
 }: {
   topologyElements: GraphElement[];
   tall?: boolean;
   clustered?: boolean;
+  resizeSignal?: number;
+  className?: string;
 }) {
   const cyRef = useRef<any>(null);
+  const frameRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const cy = cyRef.current;
@@ -55,8 +60,40 @@ export function TopologyGraph({
     }).run();
   }, [clustered, topologyElements]);
 
+  useEffect(() => {
+    if (!frameRef.current || typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    const observer = new ResizeObserver(() => {
+      const cy = cyRef.current;
+      if (!cy) {
+        return;
+      }
+
+      cy.resize();
+    });
+
+    observer.observe(frameRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      cy.resize();
+      cy.fit(cy.elements(), clustered ? 54 : 30);
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [clustered, resizeSignal, topologyElements]);
+
   return (
-    <div className={`graph-wrap ${tall ? "graph-wrap-tall" : ""}`}>
+    <div ref={frameRef} className={`graph-wrap ${tall ? "graph-wrap-tall" : ""} ${className}`.trim()}>
       <CytoscapeComponent
         className="graph-canvas"
         elements={topologyElements}
