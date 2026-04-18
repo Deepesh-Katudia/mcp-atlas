@@ -97,6 +97,10 @@ describe("HealthGrid", () => {
   it("renders the health panels and makes them desktop-resizable", () => {
     render(<HealthGrid snapshot={snapshot} />);
 
+    expect(screen.getByTestId("masonry-workspace-health")).toBeInTheDocument();
+    expect(screen.getByTestId("masonry-card-health-health-table")).toBeInTheDocument();
+    expect(screen.getByTestId("masonry-card-health-health-latency")).toBeInTheDocument();
+    expect(screen.getByTestId("masonry-card-health-health-failures")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /server health/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /latency/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /failures/i })).toBeInTheDocument();

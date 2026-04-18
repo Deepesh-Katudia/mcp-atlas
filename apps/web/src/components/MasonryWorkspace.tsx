@@ -27,9 +27,11 @@ const MASONRY_GUTTER = 20;
 export function MasonryWorkspace({
   workspaceId,
   items,
+  className = "",
 }: {
   workspaceId: string;
   items: MasonryWorkspaceItem[];
+  className?: string;
 }) {
   const isDesktop = useDesktopResize();
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -94,7 +96,7 @@ export function MasonryWorkspace({
       <div
         ref={containerRef}
         data-testid={`masonry-workspace-${workspaceId}`}
-        className="masonry-workspace masonry-workspace-static dashboard-grid"
+        className={`masonry-workspace masonry-workspace-static dashboard-grid ${className}`.trim()}
       >
         {items.map((item) => (
           <ResizablePanel
@@ -119,7 +121,7 @@ export function MasonryWorkspace({
     <div
       ref={containerRef}
       data-testid={`masonry-workspace-${workspaceId}`}
-      className="masonry-workspace"
+      className={`masonry-workspace ${className}`.trim()}
       style={{ height: `${packedItems.height}px` }}
     >
       {items.map((item) => {
