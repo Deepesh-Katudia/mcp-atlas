@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { useDesktopResize } from "./useDesktopResize";
 
@@ -33,6 +33,7 @@ export function ResizablePanel({
   const [dragging, setDragging] = useState<ResizeMode | null>(null);
   const sizeRef = useRef(defaultSize);
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const cleanupRef = useRef<(() => void) | null>(null);
 
   const panelStyle = useMemo(
     () => ({
@@ -41,6 +42,12 @@ export function ResizablePanel({
     }),
     [size],
   );
+
+  useEffect(() => {
+    return () => {
+      cleanupRef.current?.();
+    };
+  }, []);
 
   const startResize =
     (mode: ResizeMode) =>
@@ -55,6 +62,7 @@ export function ResizablePanel({
       const startHeight = sizeRef.current.height;
 
       setDragging(mode);
+      cleanupRef.current?.();
       const ownerDocument = event.currentTarget.ownerDocument;
       const dragTarget = ownerDocument.body;
       const getNextSize = (clientX: number, clientY: number) => ({
@@ -79,6 +87,12 @@ export function ResizablePanel({
         setSize(nextSize);
       };
 
+      const removeListeners = () => {
+        dragTarget.removeEventListener("mousemove", onMove);
+        dragTarget.removeEventListener("mouseup", onUp);
+        cleanupRef.current = null;
+      };
+
       const onUp = (upEvent: MouseEvent) => {
         const nextSize = getNextSize(upEvent.clientX, upEvent.clientY);
         sizeRef.current = nextSize;
@@ -89,10 +103,10 @@ export function ResizablePanel({
         setSize(nextSize);
         setDragging(null);
         onResizeEnd?.(sizeRef.current);
-        dragTarget.removeEventListener("mousemove", onMove);
-        dragTarget.removeEventListener("mouseup", onUp);
+        removeListeners();
       };
 
+      cleanupRef.current = removeListeners;
       dragTarget.addEventListener("mousemove", onMove);
       dragTarget.addEventListener("mouseup", onUp);
     };

@@ -38,6 +38,28 @@ describe("ResizablePanel", () => {
     expect(screen.getByLabelText("Resize summary panel width and height")).toBeInTheDocument();
   });
 
+  it("falls back safely when matchMedia is unavailable", () => {
+    Object.defineProperty(window, "matchMedia", {
+      writable: true,
+      value: undefined,
+    });
+
+    render(
+      <ResizablePanel
+        panelId="summary"
+        label="summary panel"
+        defaultSize={{ width: 520, height: 320 }}
+        minSize={{ width: 360, height: 240 }}
+        maxSize={{ width: 980, height: 640 }}
+      >
+        <div>Summary body</div>
+      </ResizablePanel>,
+    );
+
+    expect(screen.getByTestId("resizable-panel-summary")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Resize summary panel width")).not.toBeInTheDocument();
+  });
+
   it("does not render resize handles outside desktop breakpoints", () => {
     mockMatchMedia(false);
 
@@ -84,5 +106,31 @@ describe("ResizablePanel", () => {
 
     expect(onResizeEnd).toHaveBeenCalledTimes(1);
     expect(panel).toHaveStyle({ width: "620px", height: "410px" });
+  });
+
+  it("cleans up active drag listeners when the panel unmounts mid-drag", () => {
+    const onResizeEnd = vi.fn();
+    const { unmount } = render(
+      <ResizablePanel
+        panelId="summary"
+        label="summary panel"
+        defaultSize={{ width: 520, height: 320 }}
+        minSize={{ width: 360, height: 240 }}
+        maxSize={{ width: 980, height: 640 }}
+        onResizeEnd={onResizeEnd}
+      >
+        <div>Summary body</div>
+      </ResizablePanel>,
+    );
+
+    const handle = screen.getByLabelText("Resize summary panel width and height");
+    const dragTarget = document.body;
+
+    fireEvent.mouseDown(handle, { clientX: 520, clientY: 320 });
+    unmount();
+    fireEvent.mouseMove(dragTarget, { clientX: 620, clientY: 410 });
+    fireEvent.mouseUp(dragTarget, { clientX: 620, clientY: 410 });
+
+    expect(onResizeEnd).not.toHaveBeenCalled();
   });
 });
