@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import type { DashboardSnapshot } from "@mcp-atlas/contracts";
@@ -30,6 +30,18 @@ beforeAll(() => {
 
   vi.stubGlobal("ResizeObserver", ResizeObserverStub);
 });
+
+function mockMatchMedia(matches: boolean) {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    value: vi.fn().mockImplementation(() => ({
+      matches,
+      media: "(min-width: 1024px)",
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })),
+  });
+}
 
 const snapshot: DashboardSnapshot = {
   generatedAt: 1713124800000,
@@ -216,6 +228,10 @@ const blaxelFunctions: BlaxelFunctionRecord[] = [
 ];
 
 describe("OverviewSummary", () => {
+  beforeEach(() => {
+    mockMatchMedia(true);
+  });
+
   it("renders the executive summary sections, quick links, registry coverage, and dashboard grid contract", () => {
     const { container } = render(
       <MemoryRouter>
@@ -256,5 +272,31 @@ describe("OverviewSummary", () => {
 
     expect(screen.getAllByText("req-001").length).toBeGreaterThan(0);
     expect(screen.getByText(/memory timeout spike/i)).toBeInTheDocument();
+  });
+
+  it("wraps every major overview panel in a desktop resizable shell", () => {
+    render(
+      <MemoryRouter>
+        <OverviewSummary
+          snapshot={snapshot}
+          graphElements={buildTopologyElements(snapshot)}
+          blaxelFunctions={blaxelFunctions}
+          functionTestState={{}}
+          functionTools={{}}
+          functionToolState={{}}
+          onTestFunction={() => {}}
+          onLoadTools={() => {}}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("resizable-panel-overview-hero")).toBeInTheDocument();
+    expect(screen.getByTestId("resizable-panel-overview-anomalies")).toBeInTheDocument();
+    expect(screen.getByTestId("resizable-panel-overview-quick-links")).toBeInTheDocument();
+    expect(screen.getByTestId("resizable-panel-overview-traffic")).toBeInTheDocument();
+    expect(screen.getByTestId("resizable-panel-overview-topology")).toBeInTheDocument();
+    expect(screen.getByTestId("resizable-panel-overview-trace")).toBeInTheDocument();
+    expect(screen.getByTestId("resizable-panel-overview-registry")).toBeInTheDocument();
+    expect(screen.getAllByLabelText(/resize .* width and height/i)).toHaveLength(7);
   });
 });

@@ -1,6 +1,7 @@
 import type { DashboardSnapshot } from "@mcp-atlas/contracts";
 import { Link } from "react-router-dom";
 import type { BlaxelFunctionRecord, BlaxelToolRecord } from "../../types";
+import { ResizablePanel } from "../../components/ResizablePanel";
 import type { GraphElementsBundle } from "../topology/build-topology-elements";
 import { TraceDetail } from "../logs/TraceDetail";
 import { McpRegistryPanel } from "../registry/McpRegistryPanel";
@@ -10,6 +11,16 @@ import { MetricCard, TrafficChart } from "./OverviewCards";
 function formatCount(value: number, singular: string, plural = `${singular}s`) {
   return `${value} ${value === 1 ? singular : plural}`;
 }
+
+const overviewPanelBounds = {
+  hero: { minSize: { width: 520, height: 220 }, maxSize: { width: 1800, height: 440 } },
+  anomalies: { minSize: { width: 380, height: 220 }, maxSize: { width: 1400, height: 520 } },
+  quickLinks: { minSize: { width: 320, height: 220 }, maxSize: { width: 1200, height: 520 } },
+  traffic: { minSize: { width: 420, height: 260 }, maxSize: { width: 1600, height: 620 } },
+  topology: { minSize: { width: 340, height: 260 }, maxSize: { width: 1200, height: 620 } },
+  trace: { minSize: { width: 420, height: 360 }, maxSize: { width: 1600, height: 960 } },
+  registry: { minSize: { width: 340, height: 360 }, maxSize: { width: 1200, height: 960 } },
+} as const;
 
 export function OverviewSummary({
   snapshot,
@@ -38,7 +49,13 @@ export function OverviewSummary({
 
   return (
     <section className="overview-summary dashboard-grid">
-      <article className="panel panel-full summary-hero">
+      <ResizablePanel
+        as="article"
+        panelId="overview-hero"
+        label="executive summary"
+        className="panel panel-full summary-hero"
+        {...overviewPanelBounds.hero}
+      >
         <div className="panel-header panel-header-stack">
           <div>
             <p className="eyebrow">Executive Summary</p>
@@ -68,9 +85,15 @@ export function OverviewSummary({
             detail={`${snapshot.overview.anomalyCount} active anomalies`}
           />
         </div>
-      </article>
+      </ResizablePanel>
 
-      <article className="panel panel-wide summary-panel-light">
+      <ResizablePanel
+        as="article"
+        panelId="overview-anomalies"
+        label="active anomalies"
+        className="panel panel-wide summary-panel-light"
+        {...overviewPanelBounds.anomalies}
+      >
         <div className="panel-header">
           <div>
             <h2>Active Anomalies</h2>
@@ -92,9 +115,15 @@ export function OverviewSummary({
             ))
           )}
         </div>
-      </article>
+      </ResizablePanel>
 
-      <article className="panel summary-panel-light summary-links-panel">
+      <ResizablePanel
+        as="article"
+        panelId="overview-quick-links"
+        label="quick links"
+        className="panel summary-panel-light summary-links-panel"
+        {...overviewPanelBounds.quickLinks}
+      >
         <div className="panel-header panel-header-stack">
           <div>
             <h2>Quick Links</h2>
@@ -115,9 +144,15 @@ export function OverviewSummary({
             <span>Check latency, uptime, and saturation signals.</span>
           </Link>
         </nav>
-      </article>
+      </ResizablePanel>
 
-      <article className="panel panel-wide summary-panel-dark">
+      <ResizablePanel
+        as="article"
+        panelId="overview-traffic"
+        label="traffic pulse"
+        className="panel panel-wide summary-panel-dark"
+        {...overviewPanelBounds.traffic}
+      >
         <div className="panel-header">
           <div>
             <h2>Traffic Pulse</h2>
@@ -129,9 +164,15 @@ export function OverviewSummary({
           </div>
         </div>
         <TrafficChart timeseries={snapshot.timeseries} compact />
-      </article>
+      </ResizablePanel>
 
-      <article className="panel summary-panel-dark">
+      <ResizablePanel
+        as="article"
+        panelId="overview-topology"
+        label="topology preview"
+        className="panel summary-panel-dark"
+        {...overviewPanelBounds.topology}
+      >
         <div className="panel-header panel-header-stack">
           <div>
             <h2>Topology Preview</h2>
@@ -142,9 +183,15 @@ export function OverviewSummary({
           </span>
         </div>
         <TopologyGraph topologyElements={graphElements.flat} />
-      </article>
+      </ResizablePanel>
 
-      <article className="panel panel-wide summary-panel-light">
+      <ResizablePanel
+        as="article"
+        panelId="overview-trace"
+        label="latest trace"
+        className="panel panel-wide summary-panel-light"
+        {...overviewPanelBounds.trace}
+      >
         <div className="panel-header">
           <div>
             <h2>Latest Trace</h2>
@@ -169,9 +216,15 @@ export function OverviewSummary({
         ) : (
           <p className="empty summary-empty">No traces available.</p>
         )}
-      </article>
+      </ResizablePanel>
 
-      <article className="panel summary-panel-light">
+      <ResizablePanel
+        as="article"
+        panelId="overview-registry"
+        label="registry coverage"
+        className="panel summary-panel-light"
+        {...overviewPanelBounds.registry}
+      >
         <div className="panel-header panel-header-stack">
           <div>
             <h2>Registry Coverage</h2>
@@ -187,7 +240,7 @@ export function OverviewSummary({
           onTestFunction={onTestFunction}
           onLoadTools={onLoadTools}
         />
-      </article>
+      </ResizablePanel>
     </section>
   );
 }

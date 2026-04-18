@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { TraceSummary } from "@mcp-atlas/contracts";
 import { LogsWorkspace } from "./LogsWorkspace";
@@ -69,6 +69,18 @@ function LogsWorkspaceHarness() {
 }
 
 describe("LogsWorkspace", () => {
+  beforeEach(() => {
+    Object.defineProperty(window, "matchMedia", {
+      writable: true,
+      value: vi.fn().mockImplementation(() => ({
+        matches: true,
+        media: "(min-width: 1024px)",
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    });
+  });
+
   it("renders the real two-pane logs flow with button-based trace selection, detail updates, and export in the detail header", () => {
     const { container } = render(<LogsWorkspaceHarness />);
 
@@ -104,5 +116,13 @@ describe("LogsWorkspace", () => {
 
     fireEvent.click(exportButton);
     expect(exportTraceCsv).toHaveBeenCalledWith(traces[1]);
+  });
+
+  it("makes both logs panels desktop-resizable", () => {
+    render(<LogsWorkspaceHarness />);
+
+    expect(screen.getByTestId("resizable-panel-logs-list")).toBeInTheDocument();
+    expect(screen.getByTestId("resizable-panel-logs-detail")).toBeInTheDocument();
+    expect(screen.getAllByLabelText(/resize .* width and height/i)).toHaveLength(2);
   });
 });

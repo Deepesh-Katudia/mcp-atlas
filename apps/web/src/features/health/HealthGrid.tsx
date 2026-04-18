@@ -1,5 +1,6 @@
 import type { DashboardSnapshot } from "@mcp-atlas/contracts";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { ResizablePanel } from "../../components/ResizablePanel";
 import { formatTime, relativeTime } from "../shared/dashboard-formatters";
 
 function LatencyChart({ timeseries }: { timeseries: DashboardSnapshot["timeseries"] }) {
@@ -28,7 +29,14 @@ function LatencyChart({ timeseries }: { timeseries: DashboardSnapshot["timeserie
 export function HealthGrid({ snapshot }: { snapshot: DashboardSnapshot }) {
   return (
     <section className="dashboard-grid health-grid">
-      <article className="panel panel-wide health-table-panel">
+      <ResizablePanel
+        as="article"
+        panelId="health-table"
+        label="server health"
+        className="panel panel-wide health-table-panel"
+        minSize={{ width: 520, height: 360 }}
+        maxSize={{ width: 1600, height: 1200 }}
+      >
         <div className="panel-header">
           <div>
             <h2>Server Health</h2>
@@ -61,13 +69,20 @@ export function HealthGrid({ snapshot }: { snapshot: DashboardSnapshot }) {
                   <td>{server.p95LatencyMs}ms</td>
                   <td>{Math.round(server.errorRate * 100)}%</td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+            ))}
+          </tbody>
+        </table>
         </div>
-      </article>
+      </ResizablePanel>
 
-      <article className="panel health-chart-panel">
+      <ResizablePanel
+        as="article"
+        panelId="health-latency"
+        label="latency"
+        className="panel health-chart-panel"
+        minSize={{ width: 320, height: 320 }}
+        maxSize={{ width: 1200, height: 960 }}
+      >
         <div className="panel-header">
           <div>
             <h2>Latency</h2>
@@ -75,9 +90,16 @@ export function HealthGrid({ snapshot }: { snapshot: DashboardSnapshot }) {
           </div>
         </div>
         <LatencyChart timeseries={snapshot.timeseries} />
-      </article>
+      </ResizablePanel>
 
-      <article className="panel health-alerts-panel">
+      <ResizablePanel
+        as="article"
+        panelId="health-failures"
+        label="failures"
+        className="panel health-alerts-panel"
+        minSize={{ width: 320, height: 320 }}
+        maxSize={{ width: 1200, height: 960 }}
+      >
         <div className="panel-header">
           <div>
             <h2>Failures</h2>
@@ -100,7 +122,7 @@ export function HealthGrid({ snapshot }: { snapshot: DashboardSnapshot }) {
               </div>
             ))}
         </div>
-      </article>
+      </ResizablePanel>
     </section>
   );
 }

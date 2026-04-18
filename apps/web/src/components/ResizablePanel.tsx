@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
+import type { MouseEvent as ReactMouseEvent, ReactNode, Ref } from "react";
 import { useDesktopResize } from "./useDesktopResize";
 
 type Size = {
@@ -16,30 +16,35 @@ export function ResizablePanel({
   minSize,
   maxSize,
   onResizeEnd,
+  as = "div",
   className = "",
   children,
 }: {
   panelId: string;
   label: string;
-  defaultSize: Size;
+  defaultSize?: Size;
   minSize: Size;
   maxSize: Size;
   onResizeEnd?: (size: Size) => void;
+  as?: "div" | "article";
   className?: string;
   children: ReactNode;
 }) {
   const isDesktop = useDesktopResize();
-  const [size, setSize] = useState(defaultSize);
+  const [size, setSize] = useState<Size | null>(defaultSize ?? null);
   const [dragging, setDragging] = useState<ResizeMode | null>(null);
-  const sizeRef = useRef(defaultSize);
-  const panelRef = useRef<HTMLDivElement | null>(null);
+  const sizeRef = useRef<Size | null>(defaultSize ?? null);
+  const panelRef = useRef<HTMLElement | null>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
 
   const panelStyle = useMemo(
-    () => ({
-      width: `${size.width}px`,
-      height: `${size.height}px`,
-    }),
+    () =>
+      size
+        ? {
+            width: `${size.width}px`,
+            height: `${size.height}px`,
+          }
+        : undefined,
     [size],
   );
 
@@ -48,6 +53,20 @@ export function ResizablePanel({
       cleanupRef.current?.();
     };
   }, []);
+
+  useEffect(() => {
+    if (!isDesktop || size || !panelRef.current) {
+      return;
+    }
+
+    const nextSize = {
+      width: Math.round(panelRef.current.getBoundingClientRect().width),
+      height: Math.round(panelRef.current.getBoundingClientRect().height),
+    };
+
+    sizeRef.current = nextSize;
+    setSize(nextSize);
+  }, [isDesktop, size]);
 
   const startResize =
     (mode: ResizeMode) =>
@@ -58,11 +77,20 @@ export function ResizablePanel({
 
       const startX = event.clientX;
       const startY = event.clientY;
-      const startWidth = sizeRef.current.width;
-      const startHeight = sizeRef.current.height;
+      const currentSize =
+        sizeRef.current ??
+        (panelRef.current
+          ? {
+              width: Math.round(panelRef.current.getBoundingClientRect().width),
+              height: Math.round(panelRef.current.getBoundingClientRect().height),
+            }
+          : minSize);
+      const startWidth = currentSize.width;
+      const startHeight = currentSize.height;
 
       setDragging(mode);
       cleanupRef.current?.();
+      sizeRef.current = currentSize;
       const ownerDocument = event.currentTarget.ownerDocument;
       const dragTarget = ownerDocument.defaultView ?? ownerDocument;
       const getNextSize = (clientX: number, clientY: number) => ({
@@ -76,7 +104,11 @@ export function ResizablePanel({
             : Math.min(maxSize.height, Math.max(minSize.height, startHeight + clientY - startY)),
       });
 
-      const onMove = (moveEvent: MouseEvent) => {
+      const onMove: EventListener = (moveEvent) => {
+        if (!(moveEvent instanceof MouseEvent)) {
+          return;
+        }
+
         const nextSize = getNextSize(moveEvent.clientX, moveEvent.clientY);
 
         sizeRef.current = nextSize;
@@ -98,7 +130,11 @@ export function ResizablePanel({
         cleanupRef.current = null;
       };
 
-      const onUp = (upEvent: MouseEvent) => {
+      const onUp: EventListener = (upEvent) => {
+        if (!(upEvent instanceof MouseEvent)) {
+          return;
+        }
+
         const nextSize = getNextSize(upEvent.clientX, upEvent.clientY);
         sizeRef.current = nextSize;
         if (panelRef.current) {
@@ -122,36 +158,55 @@ export function ResizablePanel({
       cleanupRef.current = removeListeners;
     };
 
+  const resizeHandles = isDesktop ? (
+    <>
+      <button
+        type="button"
+        className="resize-handle resize-handle-east"
+        aria-label={`Resize ${label} width`}
+        onMouseDown={startResize("width")}
+      />
+      <button
+        type="button"
+        className="resize-handle resize-handle-south"
+        aria-label={`Resize ${label} height`}
+        onMouseDown={startResize("height")}
+      />
+      <button
+        type="button"
+        className="resize-handle resize-handle-corner"
+        aria-label={`Resize ${label} width and height`}
+        onMouseDown={startResize("both")}
+      />
+    </>
+  ) : null;
+
+  const panelClassName = `resizable-panel ${dragging ? "resizable-panel-dragging" : ""} ${className}`.trim();
+  const panelTestId = `resizable-panel-${panelId}`;
+
+  if (as === "article") {
+    return (
+      <article
+        ref={panelRef as Ref<HTMLElement>}
+        data-testid={panelTestId}
+        className={panelClassName}
+        style={isDesktop ? panelStyle : undefined}
+      >
+        {children}
+        {resizeHandles}
+      </article>
+    );
+  }
+
   return (
     <div
-      ref={panelRef}
-      data-testid={`resizable-panel-${panelId}`}
-      className={`resizable-panel ${dragging ? "resizable-panel-dragging" : ""} ${className}`.trim()}
+      ref={panelRef as Ref<HTMLDivElement>}
+      data-testid={panelTestId}
+      className={panelClassName}
       style={isDesktop ? panelStyle : undefined}
     >
       {children}
-      {isDesktop ? (
-        <>
-          <button
-            type="button"
-            className="resize-handle resize-handle-east"
-            aria-label={`Resize ${label} width`}
-            onMouseDown={startResize("width")}
-          />
-          <button
-            type="button"
-            className="resize-handle resize-handle-south"
-            aria-label={`Resize ${label} height`}
-            onMouseDown={startResize("height")}
-          />
-          <button
-            type="button"
-            className="resize-handle resize-handle-corner"
-            aria-label={`Resize ${label} width and height`}
-            onMouseDown={startResize("both")}
-          />
-        </>
-      ) : null}
+      {resizeHandles}
     </div>
   );
 }
