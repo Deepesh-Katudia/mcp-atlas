@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { TopologyPage } from "./TopologyPage";
 
@@ -17,6 +17,18 @@ vi.mock("../features/topology/TopologyGraph", () => ({
 }));
 
 describe("TopologyPage", () => {
+  beforeEach(() => {
+    Object.defineProperty(window, "matchMedia", {
+      writable: true,
+      value: vi.fn().mockImplementation(() => ({
+        matches: true,
+        media: "(min-width: 1024px)",
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    });
+  });
+
   it("renders the topology page header, keeps clusters in the header area, and shows supporting cards around the graph", () => {
     mockTopologyGraph.mockClear();
     mockUseDashboardAppContext.mockReturnValue({
@@ -55,6 +67,8 @@ describe("TopologyPage", () => {
     expect(within(pageHeader as HTMLElement).getByRole("button", { name: /clusters/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /dependency edges/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /alignment insights/i })).toBeInTheDocument();
+    expect(screen.getByTestId("masonry-workspace-topology")).toBeInTheDocument();
+    expect(screen.getByTestId("masonry-card-topology-topology-graph")).toBeInTheDocument();
     expect(screen.getByText("Gateway MCP -> Search MCP")).toBeInTheDocument();
     expect(screen.getByText("Search MCP lag")).toBeInTheDocument();
     expect(mockTopologyGraph).toHaveBeenCalledWith(
@@ -107,6 +121,10 @@ describe("TopologyPage", () => {
 
     render(<TopologyPage />);
 
+    expect(screen.getByTestId("masonry-workspace-topology")).toBeInTheDocument();
+    expect(screen.getByTestId("masonry-card-topology-topology-graph")).toBeInTheDocument();
+    expect(screen.getByTestId("masonry-card-topology-topology-edges")).toBeInTheDocument();
+    expect(screen.getByTestId("masonry-card-topology-topology-insights")).toBeInTheDocument();
     expect(screen.getByTestId("resizable-panel-topology-graph")).toBeInTheDocument();
     expect(screen.getByTestId("resizable-panel-topology-edges")).toBeInTheDocument();
     expect(screen.getByTestId("resizable-panel-topology-insights")).toBeInTheDocument();

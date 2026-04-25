@@ -1,6 +1,6 @@
 import type { DashboardSnapshot } from "@mcp-atlas/contracts";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { ResizablePanel } from "../../components/ResizablePanel";
+import { MasonryWorkspace } from "../../components/MasonryWorkspace";
 import { formatTime, relativeTime } from "../shared/dashboard-formatters";
 
 function LatencyChart({ timeseries }: { timeseries: DashboardSnapshot["timeseries"] }) {
@@ -27,102 +27,122 @@ function LatencyChart({ timeseries }: { timeseries: DashboardSnapshot["timeserie
 }
 
 export function HealthGrid({ snapshot }: { snapshot: DashboardSnapshot }) {
-  return (
-    <section className="dashboard-grid health-grid">
-      <ResizablePanel
-        as="article"
-        panelId="health-table"
-        label="server health"
-        className="panel panel-wide health-table-panel"
-        minSize={{ width: 520, height: 360 }}
-        maxSize={{ width: 1600, height: 1200 }}
-      >
-        <div className="panel-header">
-          <div>
-            <h2>Server Health</h2>
-            <p>Heartbeat, throughput, latency, and failure rate per MCP server.</p>
-          </div>
+  const tableContent = (
+    <>
+      <div className="panel-header">
+        <div>
+          <h2>Server Health</h2>
+          <p>Heartbeat, throughput, latency, and failure rate per MCP server.</p>
         </div>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Server</th>
-                <th>Status</th>
-                <th>Heartbeat</th>
-                <th>Req/Min</th>
-                <th>Avg Latency</th>
-                <th>P95</th>
-                <th>Failure Rate</th>
+      </div>
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Server</th>
+              <th>Status</th>
+              <th>Heartbeat</th>
+              <th>Req/Min</th>
+              <th>Avg Latency</th>
+              <th>P95</th>
+              <th>Failure Rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            {snapshot.servers.map((server) => (
+              <tr key={server.name}>
+                <td>{server.name}</td>
+                <td>
+                  <span className={`status-pill status-${server.status}`}>{server.status}</span>
+                </td>
+                <td>{server.heartbeatAt ? relativeTime(server.heartbeatAt) : "none"}</td>
+                <td>{server.requestsPerMinute}</td>
+                <td>{server.averageLatencyMs}ms</td>
+                <td>{server.p95LatencyMs}ms</td>
+                <td>{Math.round(server.errorRate * 100)}%</td>
               </tr>
-            </thead>
-            <tbody>
-              {snapshot.servers.map((server) => (
-                <tr key={server.name}>
-                  <td>{server.name}</td>
-                  <td>
-                    <span className={`status-pill status-${server.status}`}>{server.status}</span>
-                  </td>
-                  <td>{server.heartbeatAt ? relativeTime(server.heartbeatAt) : "none"}</td>
-                  <td>{server.requestsPerMinute}</td>
-                  <td>{server.averageLatencyMs}ms</td>
-                  <td>{server.p95LatencyMs}ms</td>
-                  <td>{Math.round(server.errorRate * 100)}%</td>
-                </tr>
             ))}
           </tbody>
         </table>
-        </div>
-      </ResizablePanel>
+      </div>
+    </>
+  );
 
-      <ResizablePanel
-        as="article"
-        panelId="health-latency"
-        label="latency"
-        className="panel health-chart-panel"
-        minSize={{ width: 320, height: 320 }}
-        maxSize={{ width: 1200, height: 960 }}
-      >
-        <div className="panel-header">
-          <div>
-            <h2>Latency</h2>
-            <p>Average latency trend over the last minute.</p>
-          </div>
+  const latencyContent = (
+    <>
+      <div className="panel-header">
+        <div>
+          <h2>Latency</h2>
+          <p>Average latency trend over the last minute.</p>
         </div>
-        <LatencyChart timeseries={snapshot.timeseries} />
-      </ResizablePanel>
+      </div>
+      <LatencyChart timeseries={snapshot.timeseries} />
+    </>
+  );
 
-      <ResizablePanel
-        as="article"
-        panelId="health-failures"
-        label="failures"
-        className="panel health-alerts-panel"
-        minSize={{ width: 320, height: 320 }}
-        maxSize={{ width: 1200, height: 960 }}
-      >
-        <div className="panel-header">
-          <div>
-            <h2>Failures</h2>
-            <p>Servers with the highest recent failure pressure.</p>
-          </div>
+  const failuresContent = (
+    <>
+      <div className="panel-header">
+        <div>
+          <h2>Failures</h2>
+          <p>Servers with the highest recent failure pressure.</p>
         </div>
-        <div className="alerts">
-          {snapshot.servers
-            .slice()
-            .sort((a, b) => b.errorRate - a.errorRate)
-            .map((server) => (
-              <div key={server.name} className="alert-card">
-                <div className="alert-title-row">
-                  <strong>{server.name}</strong>
-                  <span>{Math.round(server.errorRate * 100)}%</span>
-                </div>
-                <p>
-                  {server.requestsPerMinute} requests/min, p95 {server.p95LatencyMs}ms.
-                </p>
+      </div>
+      <div className="alerts">
+        {snapshot.servers
+          .slice()
+          .sort((a, b) => b.errorRate - a.errorRate)
+          .map((server) => (
+            <div key={server.name} className="alert-card">
+              <div className="alert-title-row">
+                <strong>{server.name}</strong>
+                <span>{Math.round(server.errorRate * 100)}%</span>
               </div>
-            ))}
-        </div>
-      </ResizablePanel>
-    </section>
+              <p>
+                {server.requestsPerMinute} requests/min, p95 {server.p95LatencyMs}ms.
+              </p>
+            </div>
+          ))}
+      </div>
+    </>
+  );
+
+  return (
+    <MasonryWorkspace
+      workspaceId="health"
+      className="health-grid"
+      items={[
+        {
+          id: "health-table",
+          label: "server health",
+          className: "panel health-table-panel",
+          as: "article",
+          defaultSize: { width: 980, height: 420 },
+          minSize: { width: 520, height: 360 },
+          maxSize: { width: 1600, height: 1200 },
+          content: tableContent,
+        },
+        {
+          id: "health-latency",
+          label: "latency",
+          className: "panel health-chart-panel",
+          as: "article",
+          defaultSize: { width: 420, height: 360 },
+          minSize: { width: 320, height: 320 },
+          maxSize: { width: 1200, height: 960 },
+          content: latencyContent,
+        },
+        {
+          id: "health-failures",
+          label: "failures",
+          className: "panel health-alerts-panel",
+          as: "article",
+          defaultSize: { width: 420, height: 360 },
+          minSize: { width: 320, height: 320 },
+          maxSize: { width: 1200, height: 960 },
+          content: failuresContent,
+        },
+      ]}
+    />
   );
 }

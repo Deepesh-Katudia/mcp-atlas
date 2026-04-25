@@ -15,6 +15,7 @@ export function ResizablePanel({
   defaultSize,
   minSize,
   maxSize,
+  onResize,
   onResizeEnd,
   as = "div",
   className = "",
@@ -25,6 +26,7 @@ export function ResizablePanel({
   defaultSize?: Size;
   minSize: Size;
   maxSize: Size;
+  onResize?: (size: Size) => void;
   onResizeEnd?: (size: Size) => void;
   as?: "div" | "article";
   className?: string;
@@ -117,6 +119,7 @@ export function ResizablePanel({
           panelRef.current.style.height = `${nextSize.height}px`;
         }
         setSize(nextSize);
+        onResize?.(nextSize);
       };
 
       const removeDragListeners = () => {

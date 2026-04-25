@@ -248,10 +248,10 @@ describe("OverviewSummary", () => {
       </MemoryRouter>,
     );
 
-    const overviewGrid = container.querySelector(".overview-summary.dashboard-grid");
-    expect(overviewGrid).not.toBeNull();
-    expect(overviewGrid?.querySelector(".panel.panel-full.summary-hero")).not.toBeNull();
-    expect(overviewGrid?.querySelector(".panel.panel-wide.summary-panel-dark")).not.toBeNull();
+    const overviewWorkspace = container.querySelector(".overview-summary.masonry-workspace");
+    expect(overviewWorkspace).not.toBeNull();
+    expect(screen.getByTestId("masonry-card-overview-overview-hero")).toBeInTheDocument();
+    expect(screen.getByTestId("masonry-card-overview-overview-traffic")).toBeInTheDocument();
 
     expect(screen.getByRole("heading", { name: /executive summary/i })).toBeInTheDocument();
     expect(screen.getByText("Active Servers")).toBeInTheDocument();

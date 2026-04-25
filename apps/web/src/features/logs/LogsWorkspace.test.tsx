@@ -84,10 +84,10 @@ describe("LogsWorkspace", () => {
   it("renders the real two-pane logs flow with button-based trace selection, detail updates, and export in the detail header", () => {
     const { container } = render(<LogsWorkspaceHarness />);
 
-    const workspace = container.querySelector(".logs-workspace.dashboard-grid");
+    const workspace = container.querySelector(".logs-workspace.masonry-workspace");
     expect(workspace).not.toBeNull();
-    expect(workspace?.querySelector(".logs-workspace-list")).not.toBeNull();
-    expect(workspace?.querySelector(".logs-workspace-detail.logs-workspace-detail-dark")).not.toBeNull();
+    expect(screen.getByTestId("masonry-card-logs-logs-list")).toBeInTheDocument();
+    expect(screen.getByTestId("masonry-card-logs-logs-detail")).toBeInTheDocument();
 
     expect(screen.getByRole("heading", { name: /request logs/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /trace detail/i })).toBeInTheDocument();
